@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: issue-service
+  datasource:
+    url: jdbc:postgresql://issue-service-db-service.database.svc.cluster.local:5432/issue-service-db
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+server:
+  port: 8080
+  forward-headers-strategy: framework
