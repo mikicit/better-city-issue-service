@@ -1,5 +1,6 @@
 package dev.mikita.issueservice.controller;
 
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.issueservice.annotation.FirebaseAuthorization;
 import dev.mikita.issueservice.dto.response.CountResponseDto;
@@ -13,19 +14,20 @@ import dev.mikita.issueservice.service.CategoryService;
 import dev.mikita.issueservice.service.IssueReservationService;
 import dev.mikita.issueservice.service.IssueService;
 import dev.mikita.issueservice.service.IssueSolutionService;
+import jakarta.security.auth.message.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * The type Issue controller.
@@ -67,7 +69,7 @@ public class IssueController {
      * @return the issues
      */
     @GetMapping
-    @FirebaseAuthorization
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<List<IssueResponseDto>> getIssues(@RequestParam(required = false) IssueStatus status,
                                                             @RequestParam(required = false) String authorId,
                                                             @RequestParam(required = false) Double distanceM,
@@ -100,22 +102,10 @@ public class IssueController {
      * @return the issue by id
      */
     @GetMapping(path = "/{id}")
-    @FirebaseAuthorization
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<IssueResponseDto> getIssueById(@PathVariable("id") Long id) {
         return new ResponseEntity<>(new ModelMapper()
                 .map(issueService.findIssueById(id), IssueResponseDto.class), HttpStatus.OK);
-    }
-
-    /**
-     * Update issue status.
-     *
-     * @param id     the id
-     * @param status the status
-     */
-    @PutMapping(path = "/{id}/status")
-    @FirebaseAuthorization(roles = {"ROLE_MODERATOR", "ROLE_ADMIN"})
-    public void updateIssueStatus(@PathVariable("id") Long id, @RequestParam IssueStatus status) {
-        issueService.updateIssueStatus(id, status);
     }
 
     /**
@@ -125,10 +115,10 @@ public class IssueController {
      * @param request the request
      * @throws IOException the io exception
      */
-// TODO Add validation
+
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"})
+    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"}, statuses = {"ACTIVE"})
     public void createIssue(MultipartHttpServletRequest data, HttpServletRequest request) throws IOException {
         // Attributes
         String title = data.getParameter("title");
@@ -144,6 +134,9 @@ public class IssueController {
 
         // Photo
         MultipartFile photoFile = data.getFile("photo");
+        if (photoFile == null) {
+            throw new IllegalArgumentException("Photo is required");
+        }
 
         // Firebase token
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
@@ -158,7 +151,7 @@ public class IssueController {
      * @return the issues count
      */
     @GetMapping(path = "/count")
-    @FirebaseAuthorization
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<CountResponseDto> getIssuesCount(@RequestParam(required = false) String authorId) {
         CountResponseDto response = new CountResponseDto();
         response.setCount(issueService.getIssuesCount(authorId));
@@ -172,7 +165,7 @@ public class IssueController {
      * @return the likes count
      */
     @GetMapping("/{id}/likes/count")
-    @FirebaseAuthorization
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<IssueLikesResponseDto> getLikesCount(@PathVariable Long id) {
         IssueLikesResponseDto response = new IssueLikesResponseDto();
         response.setCount(issueService.getLikesCount(id));
@@ -188,7 +181,7 @@ public class IssueController {
      */
     @ResponseStatus(HttpStatus.OK)
     @GetMapping(path = "/{id}/like/status")
-    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"})
+    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"}, statuses = {"ACTIVE"})
     public ResponseEntity<IssueLikeStatusResponseDto> getLikeStatus(@PathVariable("id") Long id,
                                                                     HttpServletRequest request) {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
@@ -206,7 +199,7 @@ public class IssueController {
      */
     @ResponseStatus(HttpStatus.OK)
     @PostMapping(path = "/{id}/like")
-    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"})
+    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"}, statuses = {"ACTIVE"})
     public void likeIssue(@PathVariable("id") Long id,
                           HttpServletRequest request) {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
@@ -221,7 +214,7 @@ public class IssueController {
      */
     @ResponseStatus(HttpStatus.OK)
     @DeleteMapping(path = "/{id}/like")
-    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"})
+    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"}, statuses = {"ACTIVE"})
     public void deleteLikeIssue(@PathVariable("id") Long issueId,
                                 HttpServletRequest request) {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
@@ -235,7 +228,7 @@ public class IssueController {
      * @return the issue reservation
      */
     @GetMapping(path = "/{id}/reservation")
-    @FirebaseAuthorization
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<IssueReservationResponseDto> getIssueReservation(@PathVariable("id") Long id) {
         IssueReservationResponseDto response = new ModelMapper().map(
                 issueService.findIssueReservation(id), IssueReservationResponseDto.class);
@@ -249,26 +242,12 @@ public class IssueController {
      * @param request the request
      */
     @ResponseStatus(HttpStatus.CREATED)
-    @FirebaseAuthorization(roles = {"ROLE_SERVICE"})
+    @FirebaseAuthorization(roles = {"ROLE_EMPLOYEE"}, statuses = {"ACTIVE"})
     @PostMapping(path = "/{id}/reservation")
-    public void createIssueReservation(@PathVariable("id") Long id, HttpServletRequest request) {
+    public void createIssueReservation(@PathVariable("id") Long id, HttpServletRequest request)
+            throws AuthException, ExecutionException, FirebaseAuthException, InterruptedException {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        issueReservationService.createIssueReservation(id, token.getUid());
-    }
-
-    /**
-     * Gets issues reservations count.
-     *
-     * @param serviceId the service id
-     * @return the issues reservations count
-     */
-    @GetMapping(path = "/reservations/count")
-    @FirebaseAuthorization
-    public ResponseEntity<CountResponseDto> getIssuesReservationsCount(
-            @RequestParam(required = false) String serviceId) {
-        CountResponseDto response = new CountResponseDto();
-        response.setCount(issueReservationService.getIssuesReservationsCount(serviceId));
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        issueReservationService.createIssueReservation(id, token);
     }
 
     /**
@@ -279,7 +258,7 @@ public class IssueController {
      */
     @ResponseStatus(HttpStatus.OK)
     @GetMapping(path = "/{id}/solution")
-    @FirebaseAuthorization
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<IssueSolutionResponseDto> getIssueSolution(@PathVariable("id") Long id) {
         IssueSolutionResponseDto issueSolutionResponseDto = new ModelMapper().map(
                 issueService.findIssueSolution(id), IssueSolutionResponseDto.class);
@@ -293,9 +272,8 @@ public class IssueController {
      * @param data    the data
      * @param request the request
      */
-// TODO Add validation
     @ResponseStatus(HttpStatus.CREATED)
-    @FirebaseAuthorization(roles = {"ROLE_SERVICE"})
+    @FirebaseAuthorization(roles = {"ROLE_EMPLOYEE"}, statuses = {"ACTIVE"})
     @PostMapping(path = "/{id}/solution")
     public void createIssueSolution(@PathVariable("id") Long id,
                                     MultipartHttpServletRequest data,
@@ -310,18 +288,29 @@ public class IssueController {
         issueSolutionService.createIssueSolution(id, token.getUid(), description, photoFile);
     }
 
-    /**
-     * Gets issues solutions count.
-     *
-     * @param serviceId the service id
-     * @return the issues solutions count
-     */
-    @GetMapping(path = "/solutions/count")
-    @FirebaseAuthorization
-    public ResponseEntity<CountResponseDto> getIssuesSolutionsCount(
-            @RequestParam(required = false) String serviceId) {
+    @GetMapping(path = "/resident/me")
+    @FirebaseAuthorization(roles = {"ROLE_RESIDENT"}, statuses = {"ACTIVE"})
+    public ResponseEntity<List<IssueResponseDto>> getCurrentResidentIssues(
+            @RequestParam(required = false) IssueStatus status,
+            HttpServletRequest request) {
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+
+        // Filters
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("authorId", token.getUid());
+        if (status != null) filters.put("status", status);
+
+        ModelMapper modelMapper = new ModelMapper();
+        List<IssueResponseDto> response = issueService.findIssues(filters).stream().
+                map(issue -> modelMapper.map(issue, IssueResponseDto.class)).toList();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping(path = "/resident/{uid}/count")
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
+    public ResponseEntity<CountResponseDto> getResidentIssuesCount(@PathVariable String uid) {
         CountResponseDto response = new CountResponseDto();
-        response.setCount(issueSolutionService.getIssuesSolutionsCount(serviceId));
+        response.setCount(issueService.getIssuesCount(uid));
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

@@ -3,6 +3,7 @@ package dev.mikita.issueservice.repository;
 import dev.mikita.issueservice.entity.IssueReservation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+import java.util.List;
 
 /**
  * The interface Issue reservation repository.
@@ -17,6 +18,10 @@ public interface IssueReservationRepository extends JpaRepository<IssueReservati
      */
     IssueReservation getIssueReservationByIssueId(Long issueId);
 
+    List<IssueReservation> getIssueReservationByServiceId(String serviceId);
+    List<IssueReservation> getIssueReservationByEmployeeId(String employeeId);
+    List<IssueReservation> getIssueReservationByDepartmentId(String departmentId);
+
     /**
      * Count by service id long.
      *
@@ -24,4 +29,6 @@ public interface IssueReservationRepository extends JpaRepository<IssueReservati
      * @return the long
      */
     Long countByServiceId(String serviceId);
+    Long countByEmployeeId(String employeeId);
+    Long countByDepartmentId(String departmentId);
 }

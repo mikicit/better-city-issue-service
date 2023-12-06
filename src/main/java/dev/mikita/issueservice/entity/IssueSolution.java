@@ -27,6 +27,12 @@ public class IssueSolution {
     @Column(name = "service_id", nullable = false, length = 128)
     private String serviceId;
 
+    @Column(name = "employee_id", nullable = false, length = 128)
+    private String employeeId;
+
+    @Column(name = "department_id", nullable = false, length = 128)
+    private String departmentId;
+
     @OneToOne
     @JoinColumn(name = "issue_id", nullable = false, unique = true)
     private Issue issue;
@@ -143,6 +149,24 @@ public class IssueSolution {
     public void setIssue(Issue issue) {
         Objects.requireNonNull(issue);
         this.issue = issue;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(String employeeId) {
+        Objects.requireNonNull(employeeId);
+        this.employeeId = employeeId;
+    }
+
+    public String getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(String departmentId) {
+        Objects.requireNonNull(departmentId);
+        this.departmentId = departmentId;
     }
 
     @Override

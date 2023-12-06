@@ -11,12 +11,14 @@ import dev.mikita.issueservice.exception.NotFoundException;
 import dev.mikita.issueservice.repository.IssueRepository;
 import dev.mikita.issueservice.repository.IssueReservationRepository;
 import dev.mikita.issueservice.repository.IssueSolutionRepository;
+import jakarta.security.auth.message.AuthException;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -67,17 +69,9 @@ public class IssueSolutionService {
                 () -> new NotFoundException("Issue solution does not found."));
     }
 
-    /**
-     * Create issue solution.
-     *
-     * @param issueId     the issue id
-     * @param serviceId   the service id
-     * @param description the description
-     * @param photoFile   the photo file
-     */
     @SneakyThrows
     @Transactional
-    public void createIssueSolution(Long issueId, String serviceId, String description, MultipartFile photoFile) {
+    public void createIssueSolution(Long issueId, String employeeUid, String description, MultipartFile photoFile) {
         // Get Issue
         Issue issue = issueRepository.findById(issueId).orElseThrow(
                 () -> new NotFoundException("Issue does not found."));
@@ -86,19 +80,21 @@ public class IssueSolutionService {
         IssueReservation issueReservation = issueReservationRepository.getIssueReservationByIssueId(issueId);
 
         if (issueReservation == null) {
-            throw new IllegalStateException("You cannot add a solution to the issue you didn't reserve.");
+            throw new AuthException("You cannot add a solution to the issue you didn't reserve.");
         }
 
-        // Check if issue is reserved by the same service
-        if (!Objects.equals(issueReservation.getServiceId(), serviceId)) {
-            throw new IllegalStateException("You cannot add a solution to the issue you didn't reserve.");
+        // Check if issue is reserved by the same employee
+        if (!Objects.equals(issueReservation.getEmployeeId(), employeeUid)) {
+            throw new AuthException("You cannot add a solution to the issue you didn't reserve.");
         }
 
         // Create Solution
         IssueSolution issueSolution = new IssueSolution();
         issueSolution.setDescription(description);
         issueSolution.setIssue(issue);
-        issueSolution.setServiceId(serviceId);
+        issueSolution.setServiceId(issueReservation.getServiceId());
+        issueSolution.setDepartmentId(issueReservation.getDepartmentId());
+        issueSolution.setEmployeeId(issueReservation.getEmployeeId());
 
         // Photo name
         String originalFilename = photoFile.getOriginalFilename();
@@ -125,14 +121,38 @@ public class IssueSolutionService {
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, notificationDto);
     }
 
-    /**
-     * Gets issues solutions count.
-     *
-     * @param serviceId the service id
-     * @return the issues solutions count
-     */
     @Transactional(readOnly = true)
-    public Long getIssuesSolutionsCount(String serviceId) {
+    public List<IssueSolution> getIssueSolutionByServiceId(String serviceId) {
+        return issueSolutionRepository.getIssueSolutionByServiceId(serviceId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<IssueSolution> getIssueSolutionByEmployeeId(String employeeId) {
+        return issueSolutionRepository.getIssueSolutionByEmployeeId(employeeId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<IssueSolution> getIssueSolutionByDepartmentId(String departmentId) {
+        return issueSolutionRepository.getIssueSolutionByDepartmentId(departmentId);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getIssuesSolutionsCount() {
+        return issueSolutionRepository.count();
+    }
+
+    @Transactional(readOnly = true)
+    public Long getIssuesSolutionsCountByServiceId(String serviceId) {
         return issueSolutionRepository.countByServiceId(serviceId);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getIssuesSolutionsCountByEmployeeId(String employeeUid) {
+        return issueSolutionRepository.countByEmployeeId(employeeUid);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getIssuesSolutionsCountByDepartmentId(String departmentUid) {
+        return issueSolutionRepository.countByDepartmentId(departmentUid);
     }
 }

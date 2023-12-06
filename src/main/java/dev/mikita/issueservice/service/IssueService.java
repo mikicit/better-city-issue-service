@@ -164,7 +164,7 @@ public class IssueService {
     }
 
     /**
-     * Find issue reservation issue reservation.
+     * Find issue reservation.
      *
      * @param issueId the issue id
      * @return the issue reservation
@@ -181,7 +181,7 @@ public class IssueService {
     }
 
     /**
-     * Find issue solution issue solution.
+     * Find issue solution.
      *
      * @param issueId the issue id
      * @return the issue solution
