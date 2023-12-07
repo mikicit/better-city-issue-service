@@ -11,11 +11,12 @@ public enum UserStatus {
     /**
      * Inactive user status.
      */
-    INACTIVE("BANNED"),
+    BANNED("BANNED"),
     /**
      * Deleted user status.
      */
     DELETED("DELETED");
+
 
     private final String name;
 

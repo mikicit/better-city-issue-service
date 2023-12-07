@@ -21,21 +21,19 @@ import java.util.concurrent.ExecutionException;
 public class EmployeeRepository {
     private final CollectionReference collectionReference;
     private final FirebaseAuth firebaseAuth;
-    private final Firestore firestore;
 
     public EmployeeRepository(Firestore firestore,
                               FirebaseAuth firebaseAuth,
                               @Value("${employee.collection.name}") String collectionName) {
         this.firebaseAuth = firebaseAuth;
         this.collectionReference = firestore.collection(collectionName);
-        this.firestore = firestore;
     }
 
     public Employee find(String uid) throws FirebaseAuthException, ExecutionException, InterruptedException {
         UserRecord userRecord = firebaseAuth.getUser(uid);
 
         if (userRecord.getCustomClaims().isEmpty()
-                || !userRecord.getCustomClaims().get("role").toString().equals("ROLE_EMPLOYEE")) {
+                || !userRecord.getCustomClaims().get("role").toString().equals("EMPLOYEE")) {
             throw NotFoundException.create("Employee", uid);
         }
 

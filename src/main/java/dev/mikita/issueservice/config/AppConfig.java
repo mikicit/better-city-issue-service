@@ -57,7 +57,6 @@ public class AppConfig {
         objectMapper.registerModule(module);
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.registerModule(jtsModule());
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return objectMapper;

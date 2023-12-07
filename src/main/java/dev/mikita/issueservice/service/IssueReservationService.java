@@ -109,17 +109,17 @@ public class IssueReservationService {
     }
 
     @Transactional(readOnly = true)
-    public List<IssueReservation> getIssueReservationByServiceId(String serviceId) {
+    public List<IssueReservation> getIssuesReservationsByServiceId(String serviceId) {
         return issueReservationRepository.getIssueReservationByServiceId(serviceId);
     }
 
     @Transactional(readOnly = true)
-    public List<IssueReservation> getIssueReservationByEmployeeId(String employeeId) {
+    public List<IssueReservation> getIssuesReservationsByEmployeeId(String employeeId) {
         return issueReservationRepository.getIssueReservationByEmployeeId(employeeId);
     }
 
     @Transactional(readOnly = true)
-    public List<IssueReservation> getIssueReservationByDepartmentId(String departmentId) {
+    public List<IssueReservation> getIssuesReservationsByDepartmentId(String departmentId) {
         return issueReservationRepository.getIssueReservationByDepartmentId(departmentId);
     }
 

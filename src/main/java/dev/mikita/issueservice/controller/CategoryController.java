@@ -1,7 +1,7 @@
 package dev.mikita.issueservice.controller;
 
 import dev.mikita.issueservice.annotation.FirebaseAuthorization;
-import dev.mikita.issueservice.dto.response.category.CategoryResponseDto;
+import dev.mikita.issueservice.dto.response.common.CategoryResponseDto;
 import dev.mikita.issueservice.entity.Category;
 import dev.mikita.issueservice.service.CategoryService;
 import org.modelmapper.ModelMapper;
@@ -34,7 +34,7 @@ public class CategoryController {
      *
      * @return the categories
      */
-    @GetMapping
+    @GetMapping(produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<List<CategoryResponseDto>> getCategories() {
         List<Category> categories = categoryService.getCategories();
@@ -52,7 +52,7 @@ public class CategoryController {
      * @param id the id
      * @return the category by id
      */
-    @GetMapping(path = "/{id}")
+    @GetMapping(path = "/{id}", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<CategoryResponseDto> getCategory(@PathVariable("id") Long id) {
         CategoryResponseDto response = new ModelMapper().map(

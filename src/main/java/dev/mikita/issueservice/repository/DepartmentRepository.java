@@ -17,13 +17,11 @@ import java.util.concurrent.ExecutionException;
 @Repository
 public class DepartmentRepository {
     private final CollectionReference collectionReference;
-    private final Firestore firestore;
 
     @Autowired
     public DepartmentRepository(Firestore firestore,
                                 @Value("${departments.collection.name}") String collectionName) {
         this.collectionReference = firestore.collection(collectionName);
-        this.firestore = firestore;
     }
 
     public List<Department> findByServiceUid(String uid) throws ExecutionException, InterruptedException {

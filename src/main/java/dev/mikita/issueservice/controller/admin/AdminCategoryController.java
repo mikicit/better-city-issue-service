@@ -28,7 +28,7 @@ public class AdminCategoryController {
      */
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
-    @FirebaseAuthorization(roles = {"ROLE_MODERATOR", "ROLE_ADMIN"})
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
     public void createCategory(@Valid @RequestBody CreateCategoryRequestDto createCategoryRequestDto) {
         ModelMapper modelMapper = new ModelMapper();
         Category category = modelMapper.map(createCategoryRequestDto, Category.class);
@@ -43,7 +43,7 @@ public class AdminCategoryController {
      */
     @ResponseStatus(HttpStatus.OK)
     @PutMapping(path = "/{id}")
-    @FirebaseAuthorization(roles = {"ROLE_MODERATOR", "ROLE_ADMIN"})
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
     public void updateCategory(@PathVariable("id") Long id,
                                @Valid @RequestBody UpdateCategoryRequestDto categoryRequest) {
         categoryService.updateCategory(id, categoryRequest.getName());
@@ -56,7 +56,7 @@ public class AdminCategoryController {
      */
     @ResponseStatus(HttpStatus.OK)
     @DeleteMapping(path = "/{id}")
-    @FirebaseAuthorization(roles = {"ROLE_MODERATOR", "ROLE_ADMIN"})
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
     public void deleteCategory(@PathVariable("id") Long id) {
         categoryService.deleteCategory(id);
     }

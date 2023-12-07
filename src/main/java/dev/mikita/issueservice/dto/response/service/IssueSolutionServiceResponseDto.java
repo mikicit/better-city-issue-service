@@ -1,17 +1,25 @@
-package dev.mikita.issueservice.dto.response.reservation;
+package dev.mikita.issueservice.dto.response.service;
 
 import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * The type Issue reservation response dto.
+ * The type Issue solution response dto.
  */
 @Data
-public class IssueReservationResponseDto {
+public class IssueSolutionServiceResponseDto {
     /**
      * The Id.
      */
     Long id;
+    /**
+     * The Photo.
+     */
+    String photo;
+    /**
+     * The Description.
+     */
+    String description;
     /**
      * The Creation date.
      */
@@ -19,7 +27,7 @@ public class IssueReservationResponseDto {
     /**
      * The Service id.
      */
-    String serviceId;
+    String employeeId;
     /**
      * The Issue id.
      */

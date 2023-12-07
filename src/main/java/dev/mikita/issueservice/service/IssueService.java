@@ -8,11 +8,15 @@ import dev.mikita.issueservice.exception.NotFoundException;
 import dev.mikita.issueservice.repository.*;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +31,7 @@ public class IssueService {
     private final IssueReservationRepository reservationRepository;
     private final IssueSolutionRepository solutionRepository;
     private final CategoryRepository categoryRepository;
+    private final ModerationResponseRepository moderationResponseRepository;
     private final StorageClient firebaseStorage;
 
     private final KafkaTemplate<String, ChangeIssueStatusNotificationDto> kafkaTemplate;
@@ -49,6 +54,7 @@ public class IssueService {
                         IssueReservationRepository reservationRepository,
                         IssueSolutionRepository solutionRepository,
                         CategoryRepository categoryRepository,
+                        ModerationResponseRepository moderationResponseRepository,
                         StorageClient firebaseStorage,
                         KafkaTemplate<String, ChangeIssueStatusNotificationDto> kafkaTemplate) {
         this.issueRepository = repository;
@@ -56,21 +62,31 @@ public class IssueService {
         this.reservationRepository = reservationRepository;
         this.solutionRepository = solutionRepository;
         this.categoryRepository = categoryRepository;
+        this.moderationResponseRepository = moderationResponseRepository;
         this.firebaseStorage = firebaseStorage;
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    /**
-     * Find issues list.
-     *
-     * @param filters the filters
-     * @return the list
-     */
     @Transactional(readOnly = true)
-    public List<Issue> findIssues(Map<String, Object> filters) {
-        IssueStatus status = (IssueStatus) filters.get("status");
-        String authorId = (String) filters.get("authorId");
-        Point coordinates = (Point) filters.get("coordinates");
+    public Page<Issue> getIssues(Pageable pageable, Map<String, Object> filters) {
+        IssueStatus status = filters.get("status") == null ? null : (IssueStatus) filters.get("status");
+        String authorId = filters.get("authorId") == null ? null : (String) filters.get("authorId");
+        List<Long> categories = filters.get("categories") == null ? null : (List<Long>) filters.get("categories");
+        LocalDateTime from = filters.get("from") == null ? null : ((LocalDate) filters.get("from")).atStartOfDay();
+        LocalDateTime to = filters.get("to") == null ? null : ((LocalDate) filters.get("to")).atStartOfDay();
+
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueRepository.findAll(status, authorId, categories, from, to, includeCategories, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Issue> getIssuesInRadius(Map<String, Object> filters) {
+        IssueStatus status = filters.get("status") == null ? null : (IssueStatus) filters.get("status");
+        List<Long> categories = filters.get("categories") == null ? null : (List<Long>) filters.get("categories");
+        LocalDateTime from = filters.get("from") == null ? null : ((LocalDate) filters.get("from")).atStartOfDay();
+        LocalDateTime to = filters.get("to") == null ? null : ((LocalDate) filters.get("to")).atStartOfDay();
+        Point coordinates =  filters.get("coordinates") == null ? null : (Point) filters.get("coordinates");
         String coordinatesString = null;
 
         if (coordinates != null) {
@@ -78,7 +94,9 @@ public class IssueService {
         }
 
         Double distanceM = (Double) filters.get("distanceM");
-        return issueRepository.findAll(status, authorId, coordinatesString, distanceM);
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueRepository.findAllByRadius(status, categories, coordinatesString, distanceM, from, to, includeCategories);
     }
 
     /**
@@ -93,25 +111,49 @@ public class IssueService {
                 .orElseThrow(() -> new NotFoundException("Issue is not found."));
     }
 
-    /**
-     * Update issue status.
-     *
-     * @param issueId the issue id
-     * @param status  the status
-     */
     @Transactional
-    public void updateIssueStatus(Long issueId, IssueStatus status) {
+    public void approveIssue(Long issueId) {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new NotFoundException("Issue is not found."));
 
-        issue.setStatus(status);
+        if (issue.getStatus() != IssueStatus.MODERATION) {
+            throw new IllegalStateException("Issue is not in moderation.");
+        }
+
+        issue.setStatus(IssueStatus.PUBLISHED);
         issueRepository.save(issue);
 
         // Send notification
         ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
         statusChangeNotification.setIssueId(issueId);
         statusChangeNotification.setUserId(issue.getAuthorId());
-        statusChangeNotification.setStatus(status);
+        statusChangeNotification.setStatus(IssueStatus.PUBLISHED);
+
+        kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
+    }
+
+    @Transactional
+    public void declineIssue(Long issueId, String moderatorId, String response) {
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new NotFoundException("Issue is not found."));
+
+        if (issue.getStatus() != IssueStatus.MODERATION) {
+            throw new IllegalStateException("Issue is not in moderation.");
+        }
+
+        issue.setStatus(IssueStatus.DELETED);
+        issueRepository.save(issue);
+        ModerationResponse moderationResponse = new ModerationResponse();
+        moderationResponse.setIssue(issue);
+        moderationResponse.setModeratorId(moderatorId);
+        moderationResponse.setComment(response);
+        moderationResponseRepository.save(moderationResponse);
+
+        // Send notification
+        ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
+        statusChangeNotification.setIssueId(issueId);
+        statusChangeNotification.setUserId(issue.getAuthorId());
+        statusChangeNotification.setStatus(IssueStatus.DELETED);
 
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
     }
@@ -276,14 +318,25 @@ public class IssueService {
         return issueRepository.findLikeCountById(issueId);
     }
 
-    /**
-     * Gets issues count.
-     *
-     * @param authorId the author id
-     * @return the issues count
-     */
-    @Transactional(readOnly = true)
-    public Long getIssuesCount(String authorId) {
-        return issueRepository.countIssuesByAuthorId(authorId);
+    @Transactional
+    public Long getIssuesCount(Map<String, Object> filters) {
+        IssueStatus status = (IssueStatus) filters.get("status");
+        String authorId = (String) filters.get("authorId");
+        List<Long> categories = (List<Long>) filters.get("categories");
+        LocalDate from = (LocalDate) filters.get("from");
+        LocalDate to = (LocalDate) filters.get("to");
+
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueRepository.getIssuesCount(status, authorId, categories, from, to, includeCategories);
+    }
+
+    @Transactional
+    public ModerationResponse getModerationResponseByIssueId(Long issueId) {
+        if (!moderationResponseRepository.existsById(issueId)) {
+            throw new NotFoundException("Moderation response is not found.");
+        }
+
+        return moderationResponseRepository.getModerationResponseByIssueId(issueId);
     }
 }

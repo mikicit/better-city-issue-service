@@ -44,6 +44,9 @@ public class Issue {
     @Column(name = "author_id", nullable = false, length = 128)
     private String authorId;
 
+    @OneToOne(mappedBy = "issue", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private ModerationResponse moderationResponse;
+
     @OneToMany(mappedBy = "issue", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Like> likes = new ArrayList<>();
 

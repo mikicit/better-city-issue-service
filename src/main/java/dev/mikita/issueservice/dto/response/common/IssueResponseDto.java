@@ -1,5 +1,6 @@
-package dev.mikita.issueservice.dto.response.issue;
+package dev.mikita.issueservice.dto.response.common;
 
+import dev.mikita.issueservice.entity.IssueStatus;
 import lombok.Data;
 import org.locationtech.jts.geom.Point;
 import java.time.LocalDateTime;
@@ -44,5 +45,5 @@ public class IssueResponseDto {
     /**
      * The Status.
      */
-    String status;
+    IssueStatus status;
 }

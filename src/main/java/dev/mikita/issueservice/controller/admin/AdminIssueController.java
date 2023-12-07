@@ -1,10 +1,32 @@
 package dev.mikita.issueservice.controller.admin;
 
+import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.issueservice.annotation.FirebaseAuthorization;
+import dev.mikita.issueservice.dto.request.DeclineIssueRequestDto;
+import dev.mikita.issueservice.dto.response.common.IssueResponseDto;
+import dev.mikita.issueservice.entity.Issue;
 import dev.mikita.issueservice.entity.IssueStatus;
+import dev.mikita.issueservice.entity.Order;
+import dev.mikita.issueservice.entity.OrderBy;
 import dev.mikita.issueservice.service.IssueService;
+import jakarta.security.auth.message.AuthException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/api/v1/admin/issues")
@@ -16,10 +38,68 @@ public class AdminIssueController {
         this.issueService = issueService;
     }
 
-    // TODO: add comment
-    @PutMapping(path = "/{id}/status")
-    @FirebaseAuthorization(roles = {"ROLE_MODERATOR", "ROLE_ADMIN"})
-    public void updateIssueStatus(@PathVariable("id") Long id, @RequestParam IssueStatus status) {
-        issueService.updateIssueStatus(id, status);
+    @GetMapping(path = "", produces = "application/json")
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
+    public ResponseEntity<Map<String, Object>> getIssues(@RequestParam(required = false) IssueStatus status,
+                                                         @RequestParam(required = false) String authorId,
+                                                         @RequestParam(required = false) List<Long> categories,
+                                                         @RequestParam(required = false)
+                                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                         @RequestParam(required = false)
+                                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                                         @RequestParam(defaultValue = "0") int page,
+                                                         @RequestParam(defaultValue = "20") int size,
+                                                         @RequestParam(required = false) OrderBy orderBy,
+                                                         @RequestParam(required = false) Order order
+    ) {
+        // Filters
+        Map<String, Object> filters = new HashMap<>();
+        if (status != null) filters.put("status", status);
+        if (authorId != null) filters.put("authorId", authorId);
+        if (categories != null) filters.put("categories", categories);
+        if (from != null) filters.put("from", from);
+        if (to != null) filters.put("to", to);
+
+        // Pagination and sorting
+        if (orderBy == null) orderBy = OrderBy.CREATION_DATE;
+        if (order == null) order = Order.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(
+                Sort.Direction.fromString(order.toString()), orderBy.getFieldName()));
+        Page<Issue> pageIssues = issueService.getIssues(pageable, filters);
+        List<Issue> issues = pageIssues.getContent();
+
+        // Collect result
+        ModelMapper modelMapper = new ModelMapper();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("issues", issues.stream()
+                .map(issue -> modelMapper.map(issue, IssueResponseDto.class))
+                .collect(Collectors.toList()));
+        response.put("currentPage", pageIssues.getNumber());
+        response.put("totalItems", pageIssues.getTotalElements());
+        response.put("totalPages", pageIssues.getTotalPages());
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping(path = "/{id}", produces = "application/json")
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
+    public ResponseEntity<IssueResponseDto> getIssue(@PathVariable Long id) {
+        return new ResponseEntity<>(new ModelMapper()
+                .map(issueService.findIssueById(id), IssueResponseDto.class), HttpStatus.OK);
+    }
+
+    @PutMapping(path = "/{id}/approve")
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
+    public void approveIssue(@PathVariable("id") Long id) {
+        issueService.approveIssue(id);
+    }
+
+    @PutMapping(path = "/{id}/decline", consumes = "application/json")
+    @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
+    public void declineIssue(@PathVariable("id") Long id, HttpServletRequest request,
+                             @Valid @RequestBody DeclineIssueRequestDto declineIssueRequest) {
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+        issueService.declineIssue(id, token.getUid(), declineIssueRequest.getComment());
     }
 }

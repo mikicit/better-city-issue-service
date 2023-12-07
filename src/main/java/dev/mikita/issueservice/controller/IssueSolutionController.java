@@ -3,8 +3,9 @@ package dev.mikita.issueservice.controller;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.issueservice.annotation.FirebaseAuthorization;
-import dev.mikita.issueservice.dto.response.CountResponseDto;
-import dev.mikita.issueservice.dto.response.solution.IssueSolutionResponseDto;
+import dev.mikita.issueservice.dto.response.common.CountResponseDto;
+import dev.mikita.issueservice.dto.response.common.IssueSolutionResponseDto;
+import dev.mikita.issueservice.dto.response.service.IssueSolutionServiceResponseDto;
 import dev.mikita.issueservice.entity.IssueSolution;
 import dev.mikita.issueservice.service.DepartmentService;
 import dev.mikita.issueservice.service.EmployeeService;
@@ -36,7 +37,7 @@ public class IssueSolutionController {
         this.departmentService = departmentService;
     }
 
-    @GetMapping(path = "/{id}")
+    @GetMapping(path = "/{id}", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<IssueSolutionResponseDto> getIssueSolution(@PathVariable Long id) {
         IssueSolutionResponseDto response = new ModelMapper().map(
@@ -44,9 +45,9 @@ public class IssueSolutionController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping(path = "/service/{uid}")
-    @FirebaseAuthorization(roles = {"ROLE_SERVICE"}, statuses = {"ACTIVE"})
-    public ResponseEntity<List<IssueSolutionResponseDto>> getServiceSolutions(
+    @GetMapping(path = "/service/{uid}", produces = "application/json")
+    @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
+    public ResponseEntity<List<IssueSolutionServiceResponseDto>> getServiceSolutions(
             @PathVariable String uid, HttpServletRequest request)
             throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
@@ -56,11 +57,11 @@ public class IssueSolutionController {
         }
 
         List<IssueSolution> response = issueSolutionService.getIssueSolutionByEmployeeId(uid);
-        return ResponseEntity.ok(new ModelMapper().map(response, new ParameterizedTypeReference<List<IssueSolutionResponseDto>>() {}.getType()));
+        return ResponseEntity.ok(new ModelMapper().map(response, new ParameterizedTypeReference<List<IssueSolutionServiceResponseDto>>() {}.getType()));
     }
 
-    @GetMapping(path = "/employee/{uid}")
-    @FirebaseAuthorization(roles = {"ROLE_EMPLOYEE", "ROLE_SERVICE"}, statuses = {"ACTIVE"})
+    @GetMapping(path = "/employee/{uid}", produces = "application/json")
+    @FirebaseAuthorization(roles = {"EMPLOYEE", "SERVICE"}, statuses = {"ACTIVE"})
     public ResponseEntity<List<IssueSolutionResponseDto>> getEmployeeSolutions(
             @PathVariable String uid, HttpServletRequest request)
             throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
@@ -68,12 +69,12 @@ public class IssueSolutionController {
 
         // Authorization
         switch (token.getClaims().get("role").toString()) {
-            case "ROLE_SERVICE" -> {
+            case "SERVICE" -> {
                 if (employeeService.isEmployeeInService(uid, token.getUid())) {
                     throw new AuthException("Unauthorized");
                 }
             }
-            case "ROLE_EMPLOYEE" -> {
+            case "EMPLOYEE" -> {
                 if (!token.getUid().equals(uid)) {
                     throw new AuthException("Unauthorized");
                 }
@@ -84,8 +85,8 @@ public class IssueSolutionController {
         return ResponseEntity.ok(new ModelMapper().map(response, new ParameterizedTypeReference<List<IssueSolutionResponseDto>>() {}.getType()));
     }
 
-    @GetMapping(path = "/department/{uid}")
-    @FirebaseAuthorization(roles = {"ROLE_SERVICE"}, statuses = {"ACTIVE"})
+    @GetMapping(path = "/department/{uid}", produces = "application/json")
+    @FirebaseAuthorization(roles = {"SERVICE"}, statuses = {"ACTIVE"})
     public ResponseEntity<List<IssueSolutionResponseDto>> getDepartmentSolutions(
             @PathVariable String uid, HttpServletRequest request)
             throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
@@ -105,7 +106,7 @@ public class IssueSolutionController {
      * @param serviceId the service id
      * @return the issues solutions count
      */
-    @GetMapping(path = "/solutions/count")
+    @GetMapping(path = "/solutions/count", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<CountResponseDto> getIssuesSolutionsCount(
             @RequestParam(required = false) String serviceId) {
