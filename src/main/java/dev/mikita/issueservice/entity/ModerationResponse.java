@@ -1,7 +1,6 @@
 package dev.mikita.issueservice.entity;
 
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -13,8 +12,8 @@ public class ModerationResponse {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "moderator_id", nullable = false, length = 128)
-    private String moderatorId;
+    @Column(name = "moderator_uid", nullable = false, length = 128)
+    private String moderatorUid;
 
     @OneToOne
     @JoinColumn(name = "issue_id", nullable = false, unique = true)
@@ -35,13 +34,13 @@ public class ModerationResponse {
         this.id = id;
     }
 
-    public String getModeratorId() {
-        return moderatorId;
+    public String getModeratorUid() {
+        return moderatorUid;
     }
 
-    public void setModeratorId(String moderatorId) {
-        Objects.requireNonNull(moderatorId);
-        this.moderatorId = moderatorId;
+    public void setModeratorUid(String moderatorUid) {
+        Objects.requireNonNull(moderatorUid);
+        this.moderatorUid = moderatorUid;
     }
 
     public Issue getIssue() {
@@ -76,19 +75,19 @@ public class ModerationResponse {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
         ModerationResponse that = (ModerationResponse) object;
-        return Objects.equals(id, that.id) && Objects.equals(moderatorId, that.moderatorId) && Objects.equals(issue, that.issue) && Objects.equals(comment, that.comment);
+        return Objects.equals(id, that.id) && Objects.equals(moderatorUid, that.moderatorUid) && Objects.equals(issue, that.issue) && Objects.equals(comment, that.comment);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, moderatorId, issue, comment);
+        return Objects.hash(id, moderatorUid, issue, comment);
     }
 
     @Override
     public String toString() {
         return "ModerationResponse{" +
                 "id=" + id +
-                ", moderatorId='" + moderatorId + '\'' +
+                ", moderatorUid='" + moderatorUid + '\'' +
                 ", issue=" + issue +
                 ", moderationResponse='" + comment + '\'' +
                 '}';

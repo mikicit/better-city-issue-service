@@ -33,7 +33,7 @@ public class IssueResponseDto {
     /**
      * The Author id.
      */
-    String authorId;
+    String authorUid;
     /**
      * The Category id.
      */
@@ -46,4 +46,5 @@ public class IssueResponseDto {
      * The Status.
      */
     IssueStatus status;
+    int likeCount;
 }

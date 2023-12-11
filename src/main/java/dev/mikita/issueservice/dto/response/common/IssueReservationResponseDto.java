@@ -19,7 +19,7 @@ public class IssueReservationResponseDto {
     /**
      * The Service id.
      */
-    String serviceId;
+    String serviceUid;
     /**
      * The Issue id.
      */

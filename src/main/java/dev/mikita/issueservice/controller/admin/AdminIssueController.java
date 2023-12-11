@@ -6,12 +6,10 @@ import dev.mikita.issueservice.dto.request.DeclineIssueRequestDto;
 import dev.mikita.issueservice.dto.response.common.IssueResponseDto;
 import dev.mikita.issueservice.entity.Issue;
 import dev.mikita.issueservice.entity.IssueStatus;
-import dev.mikita.issueservice.entity.Order;
-import dev.mikita.issueservice.entity.OrderBy;
 import dev.mikita.issueservice.service.IssueService;
-import jakarta.security.auth.message.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.Getter;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -33,6 +31,26 @@ import java.util.stream.Collectors;
 public class AdminIssueController {
     private final IssueService issueService;
 
+    @Getter
+    public enum OrderBy {
+        CREATION_DATE("creationDate"),
+        STATUS("status"),
+        TITLE("title"),
+        CATEGORY("category"),
+        LIKES("likes");
+
+        private final String fieldName;
+
+        OrderBy(String fieldName) {
+            this.fieldName = fieldName;
+        }
+    }
+
+    public enum Order {
+        ASC,
+        DESC
+    }
+
     @Autowired
     public AdminIssueController(IssueService issueService) {
         this.issueService = issueService;
@@ -40,32 +58,28 @@ public class AdminIssueController {
 
     @GetMapping(path = "", produces = "application/json")
     @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
-    public ResponseEntity<Map<String, Object>> getIssues(@RequestParam(required = false) IssueStatus status,
-                                                         @RequestParam(required = false) String authorId,
-                                                         @RequestParam(required = false) List<Long> categories,
-                                                         @RequestParam(required = false)
-                                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                                                         @RequestParam(required = false)
-                                                         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                                         @RequestParam(defaultValue = "0") int page,
-                                                         @RequestParam(defaultValue = "20") int size,
-                                                         @RequestParam(required = false) OrderBy orderBy,
-                                                         @RequestParam(required = false) Order order
+    public ResponseEntity<Map<String, Object>> getIssues(
+            @RequestParam(required = false) List<IssueStatus> statuses,
+            @RequestParam(name = "author", required = false) String authorUid,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) OrderBy orderBy,
+            @RequestParam(required = false) Order order
     ) {
-        // Filters
-        Map<String, Object> filters = new HashMap<>();
-        if (status != null) filters.put("status", status);
-        if (authorId != null) filters.put("authorId", authorId);
-        if (categories != null) filters.put("categories", categories);
-        if (from != null) filters.put("from", from);
-        if (to != null) filters.put("to", to);
+        // Default values
+        if (statuses == null) statuses = List.of(IssueStatus.MODERATION);
 
         // Pagination and sorting
         if (orderBy == null) orderBy = OrderBy.CREATION_DATE;
         if (order == null) order = Order.DESC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(
                 Sort.Direction.fromString(order.toString()), orderBy.getFieldName()));
-        Page<Issue> pageIssues = issueService.getIssues(pageable, filters);
+        Page<Issue> pageIssues = issueService.getIssues(statuses, authorUid, categories, from, to, pageable);
         List<Issue> issues = pageIssues.getContent();
 
         // Collect result
@@ -85,8 +99,8 @@ public class AdminIssueController {
     @GetMapping(path = "/{id}", produces = "application/json")
     @FirebaseAuthorization(roles = {"MODERATOR", "ADMIN"})
     public ResponseEntity<IssueResponseDto> getIssue(@PathVariable Long id) {
-        return new ResponseEntity<>(new ModelMapper()
-                .map(issueService.findIssueById(id), IssueResponseDto.class), HttpStatus.OK);
+        return ResponseEntity.ok(new ModelMapper()
+                .map(issueService.findIssueById(id), IssueResponseDto.class));
     }
 
     @PutMapping(path = "/{id}/approve")

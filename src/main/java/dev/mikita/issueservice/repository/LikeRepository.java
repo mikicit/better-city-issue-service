@@ -24,20 +24,20 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      * Find by issue id and resident id like.
      *
      * @param issueId    the issue id
-     * @param residentId the resident id
+     * @param residentUid the resident id
      * @return the like
      */
-    @Query("SELECT l FROM Like l WHERE l.issue.id = :issueId AND l.resident = :residentId")
-    Like findByIssueIdAndResidentId(@Param("issueId") Long issueId, @Param("residentId") String residentId);
+    @Query("SELECT l FROM Like l WHERE l.issue.id = :issueId AND l.residentUid = :residentUid")
+    Like findByIssueIdAndResidentId(@Param("issueId") Long issueId, @Param("residentUid") String residentUid);
 
     /**
      * Gets like status.
      *
      * @param issueId    the issue id
-     * @param residentId the resident id
+     * @param residentUid the resident id
      * @return the like status
      */
     @Query("SELECT CASE WHEN COUNT(l) > 0 THEN true ELSE false END " +
-            "FROM Like l WHERE l.issue.id = :issueId AND l.resident = :residentId")
-    Boolean getLikeStatus(@Param("issueId") Long issueId, @Param("residentId") String residentId);
+            "FROM Like l WHERE l.issue.id = :issueId AND l.residentUid = :residentUid")
+    Boolean getLikeStatus(@Param("issueId") Long issueId, @Param("residentUid") String residentUid);
 }

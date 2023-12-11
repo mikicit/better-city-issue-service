@@ -41,14 +41,17 @@ public class Issue {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    @Column(name = "author_id", nullable = false, length = 128)
-    private String authorId;
+    @Column(name = "author_uid", nullable = false, length = 128)
+    private String authorUid;
 
     @OneToOne(mappedBy = "issue", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private ModerationResponse moderationResponse;
 
     @OneToMany(mappedBy = "issue", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Like> likes = new ArrayList<>();
+
+    @Transient
+    private int likeCount;
 
     @OneToOne(mappedBy = "issue", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private IssueReservation issueReservation;
@@ -194,8 +197,8 @@ public class Issue {
      *
      * @return the author id
      */
-    public String getAuthorId() {
-        return authorId;
+    public String getAuthorUid() {
+        return authorUid;
     }
 
     /**
@@ -203,9 +206,13 @@ public class Issue {
      *
      * @param author the author
      */
-    public void setAuthorId(String author) {
+    public void setAuthorUid(String author) {
         Objects.requireNonNull(author);
-        this.authorId = author;
+        this.authorUid = author;
+    }
+
+    public int getLikeCount() {
+        return likes.size();
     }
 
     /**
@@ -237,7 +244,7 @@ public class Issue {
                 ", description='" + description +
                 ", creationDate=" + creationDate +
                 ", coordinates=" + coordinates +
-                ", authorId=" + authorId +
+                ", authorUid=" + authorUid +
                 ", category=" + category +
                 '}';
     }
@@ -246,11 +253,11 @@ public class Issue {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Issue issue)) return false;
-        return Objects.equals(id, issue.id) && status == issue.status && Objects.equals(coordinates, issue.coordinates) && Objects.equals(photo, issue.photo) && Objects.equals(creationDate, issue.creationDate) && Objects.equals(description, issue.description) && Objects.equals(title, issue.title) && Objects.equals(category, issue.category) && Objects.equals(authorId, issue.authorId);
+        return Objects.equals(id, issue.id) && status == issue.status && Objects.equals(coordinates, issue.coordinates) && Objects.equals(photo, issue.photo) && Objects.equals(creationDate, issue.creationDate) && Objects.equals(description, issue.description) && Objects.equals(title, issue.title) && Objects.equals(category, issue.category) && Objects.equals(authorUid, issue.authorUid);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, status, coordinates, photo, creationDate, description, title, category, authorId);
+        return Objects.hash(id, status, coordinates, photo, creationDate, description, title, category, authorUid);
     }
 }

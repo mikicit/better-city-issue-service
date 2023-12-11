@@ -22,14 +22,14 @@ public class IssueReservation {
     @JoinColumn(name = "issue_id", nullable = false, unique = true)
     private Issue issue;
 
-    @Column(name = "service_id", nullable = false, length = 128)
-    private String serviceId;
+    @Column(name = "service_uid", nullable = false, length = 128)
+    private String serviceUid;
 
-    @Column(name = "employee_id", nullable = false, length = 128)
-    private String employeeId;
+    @Column(name = "employee_uid", nullable = false, length = 128)
+    private String employeeUid;
 
-    @Column(name = "department_id", nullable = false, length = 128)
-    private String departmentId;
+    @Column(name = "department_uid", nullable = false, length = 128)
+    private String departmentUid;
 
     /**
      * Gets id.
@@ -92,8 +92,8 @@ public class IssueReservation {
      *
      * @return the service id
      */
-    public String getServiceId() {
-        return serviceId;
+    public String getServiceUid() {
+        return serviceUid;
     }
 
 
@@ -103,28 +103,29 @@ public class IssueReservation {
      *
      * @param service the service
      */
-    public void setServiceId(String service) {
+    public void setServiceUid(String service) {
         Objects.requireNonNull(service);
-        this.serviceId = service;
+        this.serviceUid = service;
     }
 
-    public String getEmployeeId() {
-        return employeeId;
+    public String getEmployeeUid() {
+        return employeeUid;
     }
 
-    public void setEmployeeId(String employeeId) {
-        Objects.requireNonNull(employeeId);
-        this.employeeId = employeeId;
+    public void setEmployeeUid(String employeeUid) {
+        Objects.requireNonNull(employeeUid);
+        this.employeeUid = employeeUid;
     }
 
-    public String getDepartmentId() {
-        return departmentId;
+    public String getDepartmentUid() {
+        return departmentUid;
     }
 
-    public void setDepartmentId(String departmentId) {
-        Objects.requireNonNull(departmentId);
-        this.departmentId = departmentId;
+    public void setDepartmentUid(String departmentUid) {
+        Objects.requireNonNull(departmentUid);
+        this.departmentUid = departmentUid;
     }
+
 
     @Override
     public String toString() {
@@ -132,19 +133,22 @@ public class IssueReservation {
                 "id=" + id +
                 ", creationDate=" + creationDate +
                 ", issue=" + issue +
-                ", serviceId=" + serviceId +
+                ", serviceUid='" + serviceUid + '\'' +
+                ", employeeUid='" + employeeUid + '\'' +
+                ", departmentUid='" + departmentUid + '\'' +
                 '}';
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof IssueReservation that)) return false;
-        return Objects.equals(id, that.id) && Objects.equals(creationDate, that.creationDate) && Objects.equals(issue, that.issue) && Objects.equals(serviceId, that.serviceId);
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        IssueReservation that = (IssueReservation) object;
+        return Objects.equals(id, that.id) && Objects.equals(creationDate, that.creationDate) && Objects.equals(issue, that.issue) && Objects.equals(serviceUid, that.serviceUid) && Objects.equals(employeeUid, that.employeeUid) && Objects.equals(departmentUid, that.departmentUid);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, creationDate, issue, serviceId);
+        return Objects.hash(id, creationDate, issue, serviceUid, employeeUid, departmentUid);
     }
 }

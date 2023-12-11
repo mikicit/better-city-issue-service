@@ -14,9 +14,13 @@ import dev.mikita.issueservice.repository.IssueRepository;
 import dev.mikita.issueservice.repository.IssueReservationRepository;
 import jakarta.security.auth.message.AuthException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -24,6 +28,7 @@ import java.util.concurrent.ExecutionException;
  * The type Issue reservation service.
  */
 @Service
+@Transactional(readOnly = true)
 public class IssueReservationService {
     private final IssueReservationRepository issueReservationRepository;
     private final IssueRepository issueRepository;
@@ -58,7 +63,7 @@ public class IssueReservationService {
         }
 
         // Get Department
-        Department department = departmentRepository.find(token.getClaims().get("departmentId").toString());
+        Department department = departmentRepository.find(token.getClaims().get("departmentUid").toString());
 
         // Check department
         if (!department.getCategories().contains(issue.getCategory().getId())) {
@@ -71,16 +76,16 @@ public class IssueReservationService {
         // Create reservation
         IssueReservation issueReservation = new IssueReservation();
         issueReservation.setIssue(issue);
-        issueReservation.setServiceId(token.getClaims().get("serviceId").toString());
-        issueReservation.setEmployeeId(token.getUid());
-        issueReservation.setDepartmentId(token.getClaims().get("departmentId").toString());
+        issueReservation.setServiceUid(token.getClaims().get("serviceUid").toString());
+        issueReservation.setEmployeeUid(token.getUid());
+        issueReservation.setDepartmentUid(token.getClaims().get("departmentUid").toString());
 
         issueReservationRepository.save(issueReservation);
 
         // Send notification
         ChangeIssueStatusNotificationDto notificationDto = new ChangeIssueStatusNotificationDto();
         notificationDto.setIssueId(issueId);
-        notificationDto.setUserId(issue.getAuthorId());
+        notificationDto.setUserId(issue.getAuthorUid());
         notificationDto.setStatus(IssueStatus.SOLVING);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, notificationDto);
     }
@@ -91,55 +96,30 @@ public class IssueReservationService {
      * @param id the id
      * @return the issue reservation
      */
-    @Transactional(readOnly = true)
     public IssueReservation getIssueReservation(Long id) {
         return issueReservationRepository.findById(id).orElseThrow(
                 () -> new NotFoundException("Issue reservation is not found."));
     }
 
-    @Transactional(readOnly = true)
-    public IssueReservation getIssueReservationByIssueId(Long issueId) {
-        IssueReservation issueReservation = issueReservationRepository.getIssueReservationByIssueId(issueId);
+    public Page<IssueReservation> getIssuesReservations(
+            String serviceId, String employeeId, String departmentId, LocalDate from, LocalDate to, List<Long> categories, Pageable pageable) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
 
-        if (issueReservation == null) {
-            throw new NotFoundException("Issue reservation is not found.");
-        }
+        int includeCategories = categories == null ? 0 : 1;
 
-        return issueReservationRepository.getIssueReservationByIssueId(issueId);
+        return issueReservationRepository.getIssuesReservations(
+                serviceId, employeeId, departmentId, fromDateTime, toDateTime, categories, includeCategories, pageable);
     }
 
-    @Transactional(readOnly = true)
-    public List<IssueReservation> getIssuesReservationsByServiceId(String serviceId) {
-        return issueReservationRepository.getIssueReservationByServiceId(serviceId);
-    }
+    public Long getIssuesReservationsCount(
+            String serviceId, String employeeId, String departmentId , LocalDate from, LocalDate to, List<Long> categories) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
 
-    @Transactional(readOnly = true)
-    public List<IssueReservation> getIssuesReservationsByEmployeeId(String employeeId) {
-        return issueReservationRepository.getIssueReservationByEmployeeId(employeeId);
-    }
+        int includeCategories = categories == null ? 0 : 1;
 
-    @Transactional(readOnly = true)
-    public List<IssueReservation> getIssuesReservationsByDepartmentId(String departmentId) {
-        return issueReservationRepository.getIssueReservationByDepartmentId(departmentId);
-    }
-
-    @Transactional(readOnly = true)
-    public Long getIssuesReservationsCount() {
-        return issueReservationRepository.count();
-    }
-
-    @Transactional(readOnly = true)
-    public Long getIssuesReservationsCountByServiceId(String serviceUid) {
-        return issueReservationRepository.countByServiceId(serviceUid);
-    }
-
-    @Transactional(readOnly = true)
-    public Long getIssuesReservationsCountByEmployeeId(String employeeUid) {
-        return issueReservationRepository.countByEmployeeId(employeeUid);
-    }
-
-    @Transactional(readOnly = true)
-    public Long getIssuesReservationsCountByDepartmentId(String departmentUid) {
-        return issueReservationRepository.countByDepartmentId(departmentUid);
+        return issueReservationRepository.getIssuesReservationsCount(
+                serviceId, employeeId, departmentId, fromDateTime, toDateTime, categories, includeCategories);
     }
 }

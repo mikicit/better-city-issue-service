@@ -12,12 +12,19 @@ import dev.mikita.issueservice.repository.IssueRepository;
 import dev.mikita.issueservice.repository.IssueReservationRepository;
 import dev.mikita.issueservice.repository.IssueSolutionRepository;
 import jakarta.security.auth.message.AuthException;
+import jakarta.ws.rs.BadRequestException;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,6 +33,7 @@ import java.util.UUID;
  * The type Issue solution service.
  */
 @Service
+@Transactional(readOnly = true)
 public class IssueSolutionService {
     private final IssueSolutionRepository issueSolutionRepository;
     private final IssueReservationRepository issueReservationRepository;
@@ -63,8 +71,7 @@ public class IssueSolutionService {
      * @param id the id
      * @return the issue solution by id
      */
-    @Transactional(readOnly = true)
-    public IssueSolution getIssueSolutionById(Long id) {
+    public IssueSolution getIssueSolution(Long id) {
         return issueSolutionRepository.findById(id).orElseThrow(
                 () -> new NotFoundException("Issue solution does not found."));
     }
@@ -76,15 +83,19 @@ public class IssueSolutionService {
         Issue issue = issueRepository.findById(issueId).orElseThrow(
                 () -> new NotFoundException("Issue does not found."));
 
+        // Check status
+        if (issue.getStatus() != IssueStatus.SOLVING) {
+            throw new IllegalStateException("You cannot add a solution to the issue that is not solving.");
+        }
+
         // Get Issue Reservation
         IssueReservation issueReservation = issueReservationRepository.getIssueReservationByIssueId(issueId);
-
         if (issueReservation == null) {
-            throw new AuthException("You cannot add a solution to the issue you didn't reserve.");
+            throw new IllegalStateException("You cannot add a solution to the issue you didn't reserve.");
         }
 
         // Check if issue is reserved by the same employee
-        if (!Objects.equals(issueReservation.getEmployeeId(), employeeUid)) {
+        if (!Objects.equals(issueReservation.getEmployeeUid(), employeeUid)) {
             throw new AuthException("You cannot add a solution to the issue you didn't reserve.");
         }
 
@@ -92,9 +103,9 @@ public class IssueSolutionService {
         IssueSolution issueSolution = new IssueSolution();
         issueSolution.setDescription(description);
         issueSolution.setIssue(issue);
-        issueSolution.setServiceId(issueReservation.getServiceId());
-        issueSolution.setDepartmentId(issueReservation.getDepartmentId());
-        issueSolution.setEmployeeId(issueReservation.getEmployeeId());
+        issueSolution.setServiceUid(issueReservation.getServiceUid());
+        issueSolution.setDepartmentUid(issueReservation.getDepartmentUid());
+        issueSolution.setEmployeeUid(issueReservation.getEmployeeUid());
 
         // Photo name
         String originalFilename = photoFile.getOriginalFilename();
@@ -116,43 +127,44 @@ public class IssueSolutionService {
         // Send notification
         ChangeIssueStatusNotificationDto notificationDto = new ChangeIssueStatusNotificationDto();
         notificationDto.setIssueId(issueId);
-        notificationDto.setUserId(issue.getAuthorId());
+        notificationDto.setUserId(issue.getAuthorUid());
         notificationDto.setStatus(IssueStatus.SOLVED);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, notificationDto);
     }
 
-    @Transactional(readOnly = true)
-    public List<IssueSolution> getIssueSolutionByServiceId(String serviceId) {
-        return issueSolutionRepository.getIssueSolutionByServiceId(serviceId);
+    public Page<IssueSolution> getIssuesSolutions(
+            String serviceId, String employeeId, String departmentId,
+            LocalDate from, LocalDate to, List<Long> categories, Pageable pageable) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
+
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueSolutionRepository.getIssuesSolutions(
+                serviceId, employeeId, departmentId, categories, fromDateTime, toDateTime, includeCategories, pageable);
     }
 
-    @Transactional(readOnly = true)
-    public List<IssueSolution> getIssueSolutionByEmployeeId(String employeeId) {
-        return issueSolutionRepository.getIssueSolutionByEmployeeId(employeeId);
+    public Long getIssuesSolutionsCount(
+            String serviceId, String employeeId, String departmentId, LocalDate from, LocalDate to, List<Long> categories) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
+
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueSolutionRepository.getIssuesSolutionsCount(
+                serviceId, employeeId, departmentId, categories, fromDateTime, toDateTime, includeCategories);
     }
 
-    @Transactional(readOnly = true)
-    public List<IssueSolution> getIssueSolutionByDepartmentId(String departmentId) {
-        return issueSolutionRepository.getIssueSolutionByDepartmentId(departmentId);
-    }
+    public Double getAverageSolutionsTime(
+            String serviceId, String employeeId, String departmentId, List<Long> categories, LocalDate from, LocalDate to) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
 
-    @Transactional(readOnly = true)
-    public Long getIssuesSolutionsCount() {
-        return issueSolutionRepository.count();
-    }
+        int includeCategories = categories == null ? 0 : 1;
 
-    @Transactional(readOnly = true)
-    public Long getIssuesSolutionsCountByServiceId(String serviceId) {
-        return issueSolutionRepository.countByServiceId(serviceId);
-    }
+        Double result = issueSolutionRepository.getAverageSolutionsTime(
+                serviceId, employeeId, departmentId, categories, fromDateTime, toDateTime, includeCategories);
 
-    @Transactional(readOnly = true)
-    public Long getIssuesSolutionsCountByEmployeeId(String employeeUid) {
-        return issueSolutionRepository.countByEmployeeId(employeeUid);
-    }
-
-    @Transactional(readOnly = true)
-    public Long getIssuesSolutionsCountByDepartmentId(String departmentUid) {
-        return issueSolutionRepository.countByDepartmentId(departmentUid);
+        return result == null ? 0 : result;
     }
 }

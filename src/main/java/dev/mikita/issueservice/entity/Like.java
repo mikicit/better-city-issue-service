@@ -9,7 +9,7 @@ import java.util.Objects;
 @Entity
 @Table(name = "bc_like",
         uniqueConstraints = {
-        @UniqueConstraint(name="unique_issue_resident", columnNames = {"issue_id", "resident_id"})
+        @UniqueConstraint(name="unique_issue_resident", columnNames = {"issue_id", "resident_uid"})
 })
 public class Like {
     @Id
@@ -21,8 +21,8 @@ public class Like {
     @JoinColumn(name = "issue_id")
     private Issue issue;
 
-    @Column(name = "resident_id", nullable = false, length = 128)
-    private String resident;
+    @Column(name = "resident_uid", nullable = false, length = 128)
+    private String residentUid;
 
     /**
      * Gets id.
@@ -67,18 +67,18 @@ public class Like {
      *
      * @return the resident
      */
-    public String getResident() {
-        return resident;
+    public String getResidentUid() {
+        return residentUid;
     }
 
     /**
      * Sets resident.
      *
-     * @param resident the resident
+     * @param residentUid the resident
      */
-    public void setResident(String resident) {
-        Objects.requireNonNull(resident);
-        this.resident = resident;
+    public void setResidentUid(String residentUid) {
+        Objects.requireNonNull(residentUid);
+        this.residentUid = residentUid;
     }
 
     @Override
@@ -86,7 +86,7 @@ public class Like {
         return "Like{" +
                 "id=" + id +
                 ", issue=" + issue +
-                ", resident=" + resident +
+                ", residentUid=" + residentUid +
                 '}';
     }
 
@@ -94,11 +94,11 @@ public class Like {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Like like)) return false;
-        return Objects.equals(id, like.id) && Objects.equals(issue, like.issue) && Objects.equals(resident, like.resident);
+        return Objects.equals(id, like.id) && Objects.equals(issue, like.issue) && Objects.equals(residentUid, like.residentUid);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, issue, resident);
+        return Objects.hash(id, issue, residentUid);
     }
 }

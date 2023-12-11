@@ -27,7 +27,7 @@ public class IssueSolutionResponseDto {
     /**
      * The Service id.
      */
-    String serviceId;
+    String serviceUid;
     /**
      * The Issue id.
      */

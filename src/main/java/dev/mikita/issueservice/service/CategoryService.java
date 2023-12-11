@@ -12,6 +12,7 @@ import java.util.List;
  * The type Category service.
  */
 @Service
+@Transactional(readOnly = true)
 public class CategoryService {
     private final CategoryRepository categoryRepository;
 
@@ -30,7 +31,6 @@ public class CategoryService {
      *
      * @return the categories
      */
-    @Transactional(readOnly = true)
     public List<Category> getCategories() {
         return categoryRepository.findAll();
     }
@@ -41,7 +41,6 @@ public class CategoryService {
      * @param categoryId the category id
      * @return the category by id
      */
-    @Transactional(readOnly = true)
     public Category getCategoryById(Long categoryId) {
         return categoryRepository.findById(categoryId).orElseThrow(
                 () -> new NotFoundException("Category does not found."));

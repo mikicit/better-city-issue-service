@@ -6,7 +6,6 @@ import dev.mikita.issueservice.entity.Category;
 import dev.mikita.issueservice.service.CategoryService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -43,7 +42,7 @@ public class CategoryController {
         List<CategoryResponseDto> response = categories.stream()
                 .map(category -> modelMapper.map(category, CategoryResponseDto.class))
                 .toList();
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -57,6 +56,6 @@ public class CategoryController {
     public ResponseEntity<CategoryResponseDto> getCategory(@PathVariable("id") Long id) {
         CategoryResponseDto response = new ModelMapper().map(
                 categoryService.getCategoryById(id), CategoryResponseDto.class);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        return ResponseEntity.ok(response);
     }
 }

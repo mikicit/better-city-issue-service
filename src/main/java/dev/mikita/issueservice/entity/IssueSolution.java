@@ -24,14 +24,14 @@ public class IssueSolution {
     @Column(name = "photo", nullable = false)
     private String photo;
 
-    @Column(name = "service_id", nullable = false, length = 128)
-    private String serviceId;
+    @Column(name = "service_uid", nullable = false, length = 128)
+    private String serviceUid;
 
-    @Column(name = "employee_id", nullable = false, length = 128)
-    private String employeeId;
+    @Column(name = "employee_uid", nullable = false, length = 128)
+    private String employeeUid;
 
-    @Column(name = "department_id", nullable = false, length = 128)
-    private String departmentId;
+    @Column(name = "department_uid", nullable = false, length = 128)
+    private String departmentUid;
 
     @OneToOne
     @JoinColumn(name = "issue_id", nullable = false, unique = true)
@@ -118,8 +118,8 @@ public class IssueSolution {
      *
      * @return the service id
      */
-    public String getServiceId() {
-        return serviceId;
+    public String getServiceUid() {
+        return serviceUid;
     }
 
     /**
@@ -127,9 +127,9 @@ public class IssueSolution {
      *
      * @param service the service
      */
-    public void setServiceId(String service) {
+    public void setServiceUid(String service) {
         Objects.requireNonNull(service);
-        this.serviceId = service;
+        this.serviceUid = service;
     }
 
     /**
@@ -151,45 +151,48 @@ public class IssueSolution {
         this.issue = issue;
     }
 
-    public String getEmployeeId() {
-        return employeeId;
+    public String getEmployeeUid() {
+        return employeeUid;
     }
 
-    public void setEmployeeId(String employeeId) {
-        Objects.requireNonNull(employeeId);
-        this.employeeId = employeeId;
+    public void setEmployeeUid(String employeeUid) {
+        Objects.requireNonNull(employeeUid);
+        this.employeeUid = employeeUid;
     }
 
-    public String getDepartmentId() {
-        return departmentId;
+    public String getDepartmentUid() {
+        return departmentUid;
     }
 
-    public void setDepartmentId(String departmentId) {
-        Objects.requireNonNull(departmentId);
-        this.departmentId = departmentId;
+    public void setDepartmentUid(String departmentUid) {
+        Objects.requireNonNull(departmentUid);
+        this.departmentUid = departmentUid;
     }
 
     @Override
     public String toString() {
-        return "issueSolution{" +
+        return "IssueSolution{" +
                 "id=" + id +
                 ", creationDate=" + creationDate +
-                ", description=" + description +
-                ", photo=" + photo +
-                ", serviceId=" + serviceId +
+                ", description='" + description + '\'' +
+                ", photo='" + photo + '\'' +
+                ", serviceUid='" + serviceUid + '\'' +
+                ", employeeUid='" + employeeUid + '\'' +
+                ", departmentUid='" + departmentUid + '\'' +
                 ", issue=" + issue +
                 '}';
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof IssueSolution that)) return false;
-        return Objects.equals(id, that.id) && Objects.equals(creationDate, that.creationDate) && Objects.equals(description, that.description) && Objects.equals(photo, that.photo) && Objects.equals(serviceId, that.serviceId) && Objects.equals(issue, that.issue);
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        IssueSolution that = (IssueSolution) object;
+        return Objects.equals(id, that.id) && Objects.equals(creationDate, that.creationDate) && Objects.equals(description, that.description) && Objects.equals(photo, that.photo) && Objects.equals(serviceUid, that.serviceUid) && Objects.equals(employeeUid, that.employeeUid) && Objects.equals(departmentUid, that.departmentUid) && Objects.equals(issue, that.issue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, creationDate, description, photo, serviceId, issue);
+        return Objects.hash(id, creationDate, description, photo, serviceUid, employeeUid, departmentUid, issue);
     }
 }

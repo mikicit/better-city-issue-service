@@ -6,6 +6,9 @@ import dev.mikita.issueservice.dto.ChangeIssueStatusNotificationDto;
 import dev.mikita.issueservice.entity.*;
 import dev.mikita.issueservice.exception.NotFoundException;
 import dev.mikita.issueservice.repository.*;
+import dev.mikita.issueservice.entity.IssueStatus;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -18,13 +21,13 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
  * The type Issue service.
  */
 @Service
+@Transactional(readOnly = true)
 public class IssueService {
     private final IssueRepository issueRepository;
     private final LikeRepository likeRepository;
@@ -67,36 +70,49 @@ public class IssueService {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @Transactional(readOnly = true)
-    public Page<Issue> getIssues(Pageable pageable, Map<String, Object> filters) {
-        IssueStatus status = filters.get("status") == null ? null : (IssueStatus) filters.get("status");
-        String authorId = filters.get("authorId") == null ? null : (String) filters.get("authorId");
-        List<Long> categories = filters.get("categories") == null ? null : (List<Long>) filters.get("categories");
-        LocalDateTime from = filters.get("from") == null ? null : ((LocalDate) filters.get("from")).atStartOfDay();
-        LocalDateTime to = filters.get("to") == null ? null : ((LocalDate) filters.get("to")).atStartOfDay();
+    public Page<Issue> getIssues(
+            List<IssueStatus> statuses, String authorUid, List<Long> categories, LocalDate from, LocalDate to, Pageable pageable) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
 
+        int includeStatuses = statuses == null ? 0 : 1;
         int includeCategories = categories == null ? 0 : 1;
 
-        return issueRepository.findAll(status, authorId, categories, from, to, includeCategories, pageable);
+        return issueRepository.findAll(
+                statuses, authorUid, categories, fromDateTime, toDateTime, includeCategories, includeStatuses, pageable);
     }
 
-    @Transactional(readOnly = true)
-    public List<Issue> getIssuesInRadius(Map<String, Object> filters) {
-        IssueStatus status = filters.get("status") == null ? null : (IssueStatus) filters.get("status");
-        List<Long> categories = filters.get("categories") == null ? null : (List<Long>) filters.get("categories");
-        LocalDateTime from = filters.get("from") == null ? null : ((LocalDate) filters.get("from")).atStartOfDay();
-        LocalDateTime to = filters.get("to") == null ? null : ((LocalDate) filters.get("to")).atStartOfDay();
-        Point coordinates =  filters.get("coordinates") == null ? null : (Point) filters.get("coordinates");
+    public List<Issue> getIssuesInRadius(
+            List<IssueStatus> statuses, List<Long> categories, LocalDate from, LocalDate to, Double distanceM, Double latitude, Double longitude) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
         String coordinatesString = null;
 
-        if (coordinates != null) {
+        if (latitude != null && longitude != null && distanceM != null) {
+            GeometryFactory geometryFactory = new GeometryFactory();
+            Coordinate coordinate = new Coordinate(longitude, latitude);
+            Point coordinates = geometryFactory.createPoint(coordinate);
             coordinatesString = String.format("POINT(%s %s)", coordinates.getX(), coordinates.getY());
         }
 
-        Double distanceM = (Double) filters.get("distanceM");
+        int includeStatuses = statuses == null ? 0 : 1;
         int includeCategories = categories == null ? 0 : 1;
 
-        return issueRepository.findAllByRadius(status, categories, coordinatesString, distanceM, from, to, includeCategories);
+        return issueRepository.findAllByRadius(
+                statuses, categories, coordinatesString, distanceM, fromDateTime, toDateTime, includeCategories, includeStatuses);
+    }
+
+    public Page<Issue> getIssuesByHolder(
+            String serviceUid, String departmentUid, String employeeUid,
+            List<IssueStatus> statuses, String authorUid, List<Long> categories, LocalDate from, LocalDate to, Pageable pageable) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
+
+        int includeStatuses = statuses == null ? 0 : 1;
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueRepository.findAllByHolder(
+                serviceUid, departmentUid, employeeUid, statuses, authorUid, categories, fromDateTime, toDateTime, includeCategories, includeStatuses, pageable);
     }
 
     /**
@@ -105,7 +121,6 @@ public class IssueService {
      * @param id the id
      * @return the issue
      */
-    @Transactional(readOnly = true)
     public Issue findIssueById(Long id) {
         return issueRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Issue is not found."));
@@ -126,7 +141,7 @@ public class IssueService {
         // Send notification
         ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
         statusChangeNotification.setIssueId(issueId);
-        statusChangeNotification.setUserId(issue.getAuthorId());
+        statusChangeNotification.setUserId(issue.getAuthorUid());
         statusChangeNotification.setStatus(IssueStatus.PUBLISHED);
 
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
@@ -145,14 +160,14 @@ public class IssueService {
         issueRepository.save(issue);
         ModerationResponse moderationResponse = new ModerationResponse();
         moderationResponse.setIssue(issue);
-        moderationResponse.setModeratorId(moderatorId);
+        moderationResponse.setModeratorUid(moderatorId);
         moderationResponse.setComment(response);
         moderationResponseRepository.save(moderationResponse);
 
         // Send notification
         ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
         statusChangeNotification.setIssueId(issueId);
-        statusChangeNotification.setUserId(issue.getAuthorId());
+        statusChangeNotification.setUserId(issue.getAuthorUid());
         statusChangeNotification.setStatus(IssueStatus.DELETED);
 
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
@@ -186,7 +201,7 @@ public class IssueService {
         issue.setDescription(description);
         issue.setCategory(category);
         issue.setCoordinates(coordinates);
-        issue.setAuthorId(residentId);
+        issue.setAuthorUid(residentId);
 
         // Photo name
         String originalFilename = photoFile.getOriginalFilename();
@@ -211,7 +226,6 @@ public class IssueService {
      * @param issueId the issue id
      * @return the issue reservation
      */
-    @Transactional(readOnly = true)
     public IssueReservation findIssueReservation(Long issueId) {
         IssueReservation reservation = reservationRepository.getIssueReservationByIssueId(issueId);
 
@@ -219,7 +233,7 @@ public class IssueService {
             throw new NotFoundException("Reservation is not found.");
         }
 
-        return reservationRepository.getIssueReservationByIssueId(issueId);
+        return reservation;
     }
 
     /**
@@ -228,7 +242,6 @@ public class IssueService {
      * @param issueId the issue id
      * @return the issue solution
      */
-    @Transactional(readOnly = true)
     public IssueSolution findIssueSolution(Long issueId) {
         IssueSolution solution = solutionRepository.getIssueSolutionByIssueId(issueId);
 
@@ -260,7 +273,7 @@ public class IssueService {
 
         Like like = new Like();
         like.setIssue(issue);
-        like.setResident(residentId);
+        like.setResidentUid(residentId);
         likeRepository.save(like);
     }
 
@@ -294,7 +307,6 @@ public class IssueService {
      * @param residentId the resident id
      * @return the like status
      */
-    @Transactional(readOnly = true)
     public Boolean getLikeStatus(Long id, String residentId) {
         if (!issueRepository.existsById(id)) {
             throw new NotFoundException("Issue is not found.");
@@ -309,7 +321,6 @@ public class IssueService {
      * @param issueId the issue id
      * @return the likes count
      */
-    @Transactional(readOnly = true)
     public Long getLikesCount(Long issueId) {
         if (!issueRepository.existsById(issueId)) {
             throw new NotFoundException("Issue is not found.");
@@ -318,20 +329,17 @@ public class IssueService {
         return issueRepository.findLikeCountById(issueId);
     }
 
-    @Transactional
-    public Long getIssuesCount(Map<String, Object> filters) {
-        IssueStatus status = (IssueStatus) filters.get("status");
-        String authorId = (String) filters.get("authorId");
-        List<Long> categories = (List<Long>) filters.get("categories");
-        LocalDate from = (LocalDate) filters.get("from");
-        LocalDate to = (LocalDate) filters.get("to");
+    public Long getIssuesCount(List<IssueStatus> statuses, String authorUid, List<Long> categories, LocalDate from, LocalDate to) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
 
         int includeCategories = categories == null ? 0 : 1;
+        int includeStatuses = statuses == null ? 0 : 1;
 
-        return issueRepository.getIssuesCount(status, authorId, categories, from, to, includeCategories);
+        return issueRepository.getIssuesCount(
+                statuses, authorUid, categories, fromDateTime, toDateTime, includeCategories, includeStatuses);
     }
 
-    @Transactional
     public ModerationResponse getModerationResponseByIssueId(Long issueId) {
         if (!moderationResponseRepository.existsById(issueId)) {
             throw new NotFoundException("Moderation response is not found.");
