@@ -20,7 +20,7 @@ public class DepartmentRepository {
 
     @Autowired
     public DepartmentRepository(Firestore firestore,
-                                @Value("${departments.collection.name}") String collectionName) {
+                                @Value("${firebase.firestore.collections.department}") String collectionName) {
         this.collectionReference = firestore.collection(collectionName);
     }
 

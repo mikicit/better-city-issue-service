@@ -25,7 +25,7 @@ public class Issue {
     @Column(name = "coordinates", nullable = false, columnDefinition = "geography")
     private Point coordinates;
 
-    @Column(name = "photo", nullable = false)
+    @Column(name = "photo")
     private String photo;
 
     @Column(name = "creation_date", nullable = false, columnDefinition = "TIMESTAMP")

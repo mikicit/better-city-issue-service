@@ -9,6 +9,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
@@ -21,6 +22,12 @@ import java.util.Map;
 @EnableKafka
 @Configuration
 public class KafkaConfig {
+    private final String bootstrapServers;
+
+    public KafkaConfig(Environment env) {
+        this.bootstrapServers =  env.getProperty("kafka.bootstrap-servers");
+    }
+
     /**
      * Producer factory.
      *
@@ -29,7 +36,7 @@ public class KafkaConfig {
     @Bean
     public ProducerFactory<String, ChangeIssueStatusNotificationDto> producerFactory() {
         Map<String, Object> configs = new HashMap<>();
-        configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka-service.kafka.svc.cluster.local:9092");
+        configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ChangeIssueStatusNotificationDtoSerializer.class);
         return new DefaultKafkaProducerFactory<>(configs);
@@ -43,7 +50,7 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, ChangeIssueStatusNotificationDto> consumerFactory() {
         Map<String, Object> configs = new HashMap<>();
-        configs.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka-service.kafka.svc.cluster.local:9092");
+        configs.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configs.put(ConsumerConfig.GROUP_ID_CONFIG, "notifications-group");
         configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ChangeIssueStatusNotificationDtoDeserializer.class);

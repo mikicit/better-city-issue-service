@@ -1,18 +1,16 @@
 package dev.mikita.issueservice.service;
 
-import com.google.firebase.cloud.StorageClient;
 import dev.mikita.issueservice.dto.ChangeIssueStatusNotificationDto;
 import dev.mikita.issueservice.entity.Issue;
 import dev.mikita.issueservice.entity.IssueReservation;
 import dev.mikita.issueservice.entity.IssueSolution;
-import com.google.cloud.storage.Bucket;
 import dev.mikita.issueservice.entity.IssueStatus;
 import dev.mikita.issueservice.exception.NotFoundException;
 import dev.mikita.issueservice.repository.IssueRepository;
 import dev.mikita.issueservice.repository.IssueReservationRepository;
 import dev.mikita.issueservice.repository.IssueSolutionRepository;
+import dev.mikita.issueservice.util.FirebaseStorageUtil;
 import jakarta.security.auth.message.AuthException;
-import jakarta.ws.rs.BadRequestException;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,13 +19,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * The type Issue solution service.
@@ -38,7 +33,7 @@ public class IssueSolutionService {
     private final IssueSolutionRepository issueSolutionRepository;
     private final IssueReservationRepository issueReservationRepository;
     private final IssueRepository issueRepository;
-    private final StorageClient firebaseStorage;
+    private final FirebaseStorageUtil firebaseStorageUtil;
 
     private final KafkaTemplate<String, ChangeIssueStatusNotificationDto> kafkaTemplate;
     private static final String STATUS_CHANGE_TOPIC = "notifications";
@@ -49,19 +44,19 @@ public class IssueSolutionService {
      * @param issueSolutionRepository    the issue solution repository
      * @param issueReservationRepository the issue reservation repository
      * @param issueRepository            the issue repository
-     * @param firebaseStorage            the firebase storage
+     * @param firebaseStorageUtil        the firebase storage util
      * @param kafkaTemplate              the kafka template
      */
     @Autowired
     public IssueSolutionService(IssueSolutionRepository issueSolutionRepository,
                                 IssueReservationRepository issueReservationRepository,
                                 IssueRepository issueRepository,
-                                StorageClient firebaseStorage,
+                                FirebaseStorageUtil firebaseStorageUtil,
                                 KafkaTemplate<String, ChangeIssueStatusNotificationDto> kafkaTemplate) {
         this.issueSolutionRepository = issueSolutionRepository;
         this.issueReservationRepository = issueReservationRepository;
         this.issueRepository = issueRepository;
-        this.firebaseStorage = firebaseStorage;
+        this.firebaseStorageUtil = firebaseStorageUtil;
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -99,6 +94,9 @@ public class IssueSolutionService {
             throw new AuthException("You cannot add a solution to the issue you didn't reserve.");
         }
 
+        // Set status
+        issue.setStatus(IssueStatus.SOLVED);
+
         // Create Solution
         IssueSolution issueSolution = new IssueSolution();
         issueSolution.setDescription(description);
@@ -107,21 +105,9 @@ public class IssueSolutionService {
         issueSolution.setDepartmentUid(issueReservation.getDepartmentUid());
         issueSolution.setEmployeeUid(issueReservation.getEmployeeUid());
 
-        // Photo name
-        String originalFilename = photoFile.getOriginalFilename();
-        assert originalFilename != null;
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String uniqueFilename = UUID.randomUUID() + fileExtension;
-
-        // Firebase Storage
-        Bucket bucket = firebaseStorage.bucket();
-        String storagePath = "issues/" + uniqueFilename;
-        bucket.create(storagePath, photoFile.getBytes(), photoFile.getContentType());
-        String photoUrl = "https://storage.googleapis.com/" + bucket.getName() + "/" + storagePath;
-
-        issueSolution.setPhoto(photoUrl);
-        issueSolution.getIssue().setStatus(IssueStatus.SOLVED);
-
+        // Photo
+        String storagePath = firebaseStorageUtil.uploadImage(photoFile, "issues/%s/".formatted(issue.getId()));
+        issueSolution.setPhoto(storagePath);
         issueSolutionRepository.save(issueSolution);
 
         // Send notification

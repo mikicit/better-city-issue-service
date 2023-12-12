@@ -2,13 +2,11 @@ package dev.mikita.issueservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * The type Issue service application.
  */
 @SpringBootApplication
-@EnableDiscoveryClient
 public class IssueServiceApplication {
 	/**
 	 * The entry point of application.

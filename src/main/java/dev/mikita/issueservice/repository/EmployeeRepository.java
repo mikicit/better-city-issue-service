@@ -24,7 +24,7 @@ public class EmployeeRepository {
 
     public EmployeeRepository(Firestore firestore,
                               FirebaseAuth firebaseAuth,
-                              @Value("${employee.collection.name}") String collectionName) {
+                              @Value("${firebase.firestore.collections.employee}") String collectionName) {
         this.firebaseAuth = firebaseAuth;
         this.collectionReference = firestore.collection(collectionName);
     }

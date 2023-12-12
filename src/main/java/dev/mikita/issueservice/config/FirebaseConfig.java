@@ -9,6 +9,7 @@ import com.google.firebase.cloud.FirestoreClient;
 import com.google.firebase.cloud.StorageClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import java.io.IOException;
@@ -19,6 +20,14 @@ import java.io.InputStream;
  */
 @Configuration
 public class FirebaseConfig {
+    private final String firebaseStorageBucketName;
+    private final String firebaseServiceAccountFile;
+
+    public FirebaseConfig(Environment env) {
+        this.firebaseStorageBucketName = env.getProperty("firebase.storage.bucketName");
+        this.firebaseServiceAccountFile = env.getProperty("firebase.service.account.file");
+    }
+
     /**
      * Firebase app.
      *
@@ -27,11 +36,11 @@ public class FirebaseConfig {
      */
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        Resource resource = new ClassPathResource("keys/firebase-service-account-key.json");
+        Resource resource = new ClassPathResource(firebaseServiceAccountFile);
         InputStream inputStream = resource.getInputStream();
         FirebaseOptions options = new FirebaseOptions.Builder()
                 .setCredentials(GoogleCredentials.fromStream(inputStream))
-                .setStorageBucket("ctu-nss.appspot.com")
+                .setStorageBucket(firebaseStorageBucketName)
                 .build();
         return FirebaseApp.initializeApp(options);
     }

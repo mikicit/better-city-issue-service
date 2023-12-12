@@ -1,12 +1,11 @@
 package dev.mikita.issueservice.service;
 
-import com.google.cloud.storage.Bucket;
-import com.google.firebase.cloud.StorageClient;
 import dev.mikita.issueservice.dto.ChangeIssueStatusNotificationDto;
 import dev.mikita.issueservice.entity.*;
 import dev.mikita.issueservice.exception.NotFoundException;
 import dev.mikita.issueservice.repository.*;
 import dev.mikita.issueservice.entity.IssueStatus;
+import dev.mikita.issueservice.util.FirebaseStorageUtil;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -21,7 +20,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * The type Issue service.
@@ -35,7 +33,7 @@ public class IssueService {
     private final IssueSolutionRepository solutionRepository;
     private final CategoryRepository categoryRepository;
     private final ModerationResponseRepository moderationResponseRepository;
-    private final StorageClient firebaseStorage;
+    private final FirebaseStorageUtil firebaseStorageUtil;
 
     private final KafkaTemplate<String, ChangeIssueStatusNotificationDto> kafkaTemplate;
     private static final String STATUS_CHANGE_TOPIC = "notifications";
@@ -48,7 +46,7 @@ public class IssueService {
      * @param reservationRepository the reservation repository
      * @param solutionRepository    the solution repository
      * @param categoryRepository    the category repository
-     * @param firebaseStorage       the firebase storage
+     * @param firebaseStorageUtil   the firebase storage util
      * @param kafkaTemplate         the kafka template
      */
     @Autowired
@@ -58,7 +56,7 @@ public class IssueService {
                         IssueSolutionRepository solutionRepository,
                         CategoryRepository categoryRepository,
                         ModerationResponseRepository moderationResponseRepository,
-                        StorageClient firebaseStorage,
+                        FirebaseStorageUtil firebaseStorageUtil,
                         KafkaTemplate<String, ChangeIssueStatusNotificationDto> kafkaTemplate) {
         this.issueRepository = repository;
         this.likeRepository = likeRepository;
@@ -66,7 +64,7 @@ public class IssueService {
         this.solutionRepository = solutionRepository;
         this.categoryRepository = categoryRepository;
         this.moderationResponseRepository = moderationResponseRepository;
-        this.firebaseStorage = firebaseStorage;
+        this.firebaseStorageUtil = firebaseStorageUtil;
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -83,23 +81,29 @@ public class IssueService {
     }
 
     public List<Issue> getIssuesInRadius(
-            List<IssueStatus> statuses, List<Long> categories, LocalDate from, LocalDate to, Double distanceM, Double latitude, Double longitude) {
+            List<IssueStatus> statuses, List<Long> categories, LocalDate from, LocalDate to, Double distance, Double latitude, Double longitude) {
         LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
         LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
-        String coordinatesString = null;
-
-        if (latitude != null && longitude != null && distanceM != null) {
-            GeometryFactory geometryFactory = new GeometryFactory();
-            Coordinate coordinate = new Coordinate(longitude, latitude);
-            Point coordinates = geometryFactory.createPoint(coordinate);
-            coordinatesString = String.format("POINT(%s %s)", coordinates.getX(), coordinates.getY());
-        }
+        String coordinatesString = createCoordinatesString(latitude, longitude);
 
         int includeStatuses = statuses == null ? 0 : 1;
         int includeCategories = categories == null ? 0 : 1;
 
         return issueRepository.findAllByRadius(
-                statuses, categories, coordinatesString, distanceM, fromDateTime, toDateTime, includeCategories, includeStatuses);
+                statuses, categories, coordinatesString, distance, fromDateTime, toDateTime, includeCategories, includeStatuses);
+    }
+
+    public List<Issue> getIssuesInSquare(
+            List<IssueStatus> statuses, List<Long> categories, LocalDate from, LocalDate to,
+            Double minLongitude, Double minLatitude, Double maxLongitude, Double maxLatitude) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
+
+        int includeStatuses = statuses == null ? 0 : 1;
+        int includeCategories = categories == null ? 0 : 1;
+
+        return issueRepository.findAllBySquare(
+                statuses, categories, minLongitude, minLatitude, maxLongitude, maxLatitude, fromDateTime, toDateTime, includeCategories, includeStatuses);
     }
 
     public Page<Issue> getIssuesByHolder(
@@ -202,21 +206,16 @@ public class IssueService {
         issue.setCategory(category);
         issue.setCoordinates(coordinates);
         issue.setAuthorUid(residentId);
-
-        // Photo name
-        String originalFilename = photoFile.getOriginalFilename();
-        assert originalFilename != null;
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String uniqueFilename = UUID.randomUUID() + fileExtension;
-
-        // Firebase Storage
-        Bucket bucket = firebaseStorage.bucket();
-        String storagePath = "issues/" + uniqueFilename;
-        bucket.create(storagePath, photoFile.getBytes(), photoFile.getContentType());
-        String photoUrl = "https://storage.googleapis.com/" + bucket.getName() + "/" + storagePath;
-
         issue.setStatus(IssueStatus.MODERATION);
-        issue.setPhoto(photoUrl);
+        issueRepository.save(issue);
+
+        // Photo
+        if (photoFile == null) {
+            throw new IOException("File is null.");
+        }
+
+        String storagePath = firebaseStorageUtil.uploadImage(photoFile, "issues/%s/".formatted(issue.getId()));
+        issue.setPhoto(storagePath);
         issueRepository.save(issue);
     }
 
@@ -340,11 +339,34 @@ public class IssueService {
                 statuses, authorUid, categories, fromDateTime, toDateTime, includeCategories, includeStatuses);
     }
 
+    public Long getIssuesCountByHolder(String serviceUid, String departmentUid, String employeeUid,
+                                       List<IssueStatus> statuses, String authorUid, List<Long> categories, LocalDate from, LocalDate to) {
+        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
+        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
+
+        int includeCategories = categories == null ? 0 : 1;
+        int includeStatuses = statuses == null ? 0 : 1;
+
+        return issueRepository.getIssuesCountByHolder(
+                serviceUid, departmentUid, employeeUid, statuses, authorUid, categories, fromDateTime, toDateTime, includeCategories, includeStatuses);
+    }
+
     public ModerationResponse getModerationResponseByIssueId(Long issueId) {
         if (!moderationResponseRepository.existsById(issueId)) {
             throw new NotFoundException("Moderation response is not found.");
         }
 
         return moderationResponseRepository.getModerationResponseByIssueId(issueId);
+    }
+
+    private String createCoordinatesString(Double latitude, Double longitude) {
+        if (latitude == null || longitude == null) {
+            return null;
+        }
+
+        GeometryFactory geometryFactory = new GeometryFactory();
+        Coordinate coordinate = new Coordinate(longitude, latitude);
+        Point coordinates = geometryFactory.createPoint(coordinate);
+        return String.format("POINT(%s %s)", coordinates.getX(), coordinates.getY());
     }
 }

@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -158,9 +159,9 @@ public class IssueController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) Double distanceM,
-            @RequestParam(required = false) Double latitude,
-            @RequestParam(required = false) Double longitude) {
+            @RequestParam Double distance,
+            @RequestParam Double latitude,
+            @RequestParam Double longitude) {
         List<IssueStatus> allowedStatuses = List.of(IssueStatus.PUBLISHED, IssueStatus.SOLVING, IssueStatus.SOLVED);
 
         // Merge statuses
@@ -170,9 +171,42 @@ public class IssueController {
             statuses = allowedStatuses;
         }
 
-        List<Issue> issues = issueService.getIssuesInRadius(statuses, categories, from, to, distanceM, latitude, longitude);
+        List<Issue> issues = issueService.getIssuesInRadius(statuses, categories, from, to, distance, latitude, longitude);
         return ResponseEntity.ok(new ModelMapper().map(
                 issues, new ParameterizedTypeReference<List<IssueShortResponseDto>>() {}.getType()));
+    }
+
+    @GetMapping(path = "/square", produces = "application/json")
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
+    public ResponseEntity<List<?>> getIssuesInSquare(
+            @RequestParam(required = false) List<IssueStatus> statuses,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "min_longitude") Double minLongitude,
+            @RequestParam(name = "min_latitude") Double minLatitude,
+            @RequestParam(name = "max_longitude") Double maxLongitude,
+            @RequestParam(name = "max_latitude") Double maxLatitude,
+            @RequestParam(name = "coordinates_only", required = false) Boolean coordinatesOnly) {
+        List<IssueStatus> allowedStatuses = List.of(IssueStatus.PUBLISHED, IssueStatus.SOLVING, IssueStatus.SOLVED);
+
+        // Merge statuses
+        if (statuses != null) {
+            statuses = statuses.stream().filter(allowedStatuses::contains).collect(Collectors.toList());
+        } else {
+            statuses = allowedStatuses;
+        }
+
+        List<Issue> issues = issueService.getIssuesInSquare(
+                statuses, categories, from, to, minLongitude, minLatitude, maxLongitude, maxLatitude);
+
+        Type responseType = coordinatesOnly != null && coordinatesOnly
+                ? new ParameterizedTypeReference<List<CoordinatesResponseDto>>() {}.getType()
+                : new ParameterizedTypeReference<List<IssueShortResponseDto>>() {}.getType();
+
+        return ResponseEntity.ok(new ModelMapper().map(issues, responseType));
     }
 
     /**
@@ -220,80 +254,10 @@ public class IssueController {
         Coordinate coordinate = new Coordinate(longitude, latitude);
         Point coordinates = geometryFactory.createPoint(coordinate);
 
-        // Photo
-        MultipartFile photoFile = data.getFile("photo");
-        if (photoFile == null) {
-            throw new IllegalArgumentException("Photo is required");
-        }
-
         // Firebase token
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
 
-        issueService.createIssue(token.getUid(), title, description, categoryId, coordinates, photoFile);
-    }
-
-    /**
-     * Gets likes count.
-     *
-     * @param id the id
-     * @return the likes count
-     */
-    @GetMapping(value = "/{id}/likes/count", produces = "application/json")
-    @FirebaseAuthorization(statuses = {"ACTIVE"})
-    public ResponseEntity<IssueLikesResponseDto> getLikesCount(@PathVariable Long id) {
-        IssueLikesResponseDto response = new IssueLikesResponseDto();
-        response.setCount(issueService.getLikesCount(id));
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Gets like status.
-     *
-     * @param id      the id
-     * @param request the request
-     * @return the like status
-     */
-    @ResponseStatus(HttpStatus.OK)
-    @GetMapping(path = "/{id}/like/status", produces = "application/json")
-    @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
-    public ResponseEntity<IssueLikeStatusResponseDto> getLikeStatus(@PathVariable("id") Long id,
-                                                                    HttpServletRequest request) {
-        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        Boolean likeStatus = issueService.getLikeStatus(id, token.getUid());
-        IssueLikeStatusResponseDto response = new IssueLikeStatusResponseDto();
-        response.setLikeStatus(likeStatus);
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Like issue.
-     *
-     * @param id      the id
-     * @param request the request
-     */
-    @ResponseStatus(HttpStatus.OK)
-    @PostMapping(path = "/{id}/like")
-    @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
-    public void likeIssue(@PathVariable("id") Long id,
-                          HttpServletRequest request) {
-        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        issueService.likeIssue(id, token.getUid());
-    }
-
-    /**
-     * Delete like issue.
-     *
-     * @param issueId the issue id
-     * @param request the request
-     */
-    @ResponseStatus(HttpStatus.OK)
-    @DeleteMapping(path = "/{id}/like")
-    @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
-    public void deleteLikeIssue(@PathVariable("id") Long issueId,
-                                HttpServletRequest request) {
-        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
-        issueService.deleteLikeIssue(issueId, token.getUid());
+        issueService.createIssue(token.getUid(), title, description, categoryId, coordinates, data.getFile("photo"));
     }
 
     /**
@@ -395,30 +359,6 @@ public class IssueController {
 
         IssueModerationResponseResponseDto response = new ModelMapper().map(
                 issueService.getModerationResponseByIssueId(id), IssueModerationResponseResponseDto.class);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping(path = "/count", produces = "application/json")
-    @FirebaseAuthorization(statuses = {"ACTIVE"})
-    public ResponseEntity<CountResponseDto> getIssuesCount(
-            @RequestParam(required = false) List<IssueStatus> statuses,
-            @RequestParam(name = "author", required = false) String authorUid,
-            @RequestParam(required = false) List<Long> categories,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to)
-    {
-        List<IssueStatus> allowedStatuses = List.of(IssueStatus.PUBLISHED, IssueStatus.SOLVING, IssueStatus.SOLVED);
-        if (statuses != null) {
-            statuses = statuses.stream().filter(allowedStatuses::contains).collect(Collectors.toList());
-        } else {
-            statuses = allowedStatuses;
-        }
-
-        CountResponseDto response = new CountResponseDto();
-        response.setCount(issueService.getIssuesCount(statuses, authorUid, categories, from, to));
-
         return ResponseEntity.ok(response);
     }
 
@@ -566,5 +506,172 @@ public class IssueController {
         response.put("totalPages", pageIssues.getTotalPages());
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(path = "/count", produces = "application/json")
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
+    public ResponseEntity<CountResponseDto> getIssuesCount(
+            @RequestParam(required = false) List<IssueStatus> statuses,
+            @RequestParam(name = "author", required = false) String authorUid,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to)
+    {
+        List<IssueStatus> allowedStatuses = List.of(IssueStatus.PUBLISHED, IssueStatus.SOLVING, IssueStatus.SOLVED);
+        if (statuses != null) {
+            statuses = statuses.stream().filter(allowedStatuses::contains).collect(Collectors.toList());
+        } else {
+            statuses = allowedStatuses;
+        }
+
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCount(statuses, authorUid, categories, from, to));
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(path = "/service/{uid}/count", produces = "application/json")
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
+    public ResponseEntity<CountResponseDto> getIssuesCountByService(
+            @RequestParam(required = false) List<IssueStatus> statuses,
+            @RequestParam(name = "author", required = false) String authorUid,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @PathVariable String uid) {
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCountByHolder(uid, null, null, statuses, authorUid, categories, from, to));
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(path = "/department/{uid}/count", produces = "application/json")
+    @FirebaseAuthorization(roles = {"SERVICE", "EMPLOYEE"}, statuses = {"ACTIVE"})
+    public ResponseEntity<CountResponseDto> getIssuesCountByDepartment(
+            @RequestParam(required = false) List<IssueStatus> statuses,
+            @RequestParam(name = "author", required = false) String authorUid,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @PathVariable String uid,
+            HttpServletRequest request)
+            throws ExecutionException, InterruptedException, FirebaseAuthException, AuthException {
+        // Authorization
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+        if (token.getClaims().get("role").toString().equals(UserRole.SERVICE.toString())) {
+            if (!departmentService.isServiceOwnerOfDepartment(token.getUid(), uid)) {
+                throw new AuthException("You are not authorized to access this resource");
+            }
+        } else if (token.getClaims().get("role").toString().equals(UserRole.EMPLOYEE.toString())) {
+            if (!employeeService.isEmployeeInDepartment(token.getUid(), uid)) {
+                throw new AuthException("You are not authorized to access this resource");
+            }
+        }
+
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCountByHolder(null, uid, null, statuses, authorUid, categories, from, to));
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping(path = "/employee/{uid}/count", produces = "application/json")
+    @FirebaseAuthorization(roles = {"SERVICE", "EMPLOYEE"}, statuses = {"ACTIVE"})
+    public ResponseEntity<CountResponseDto> getIssuesCountByEmployee(
+            @RequestParam(required = false) List<IssueStatus> statuses,
+            @RequestParam(name = "author", required = false) String authorUid,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @PathVariable String uid,
+            HttpServletRequest request)
+            throws ExecutionException, InterruptedException, FirebaseAuthException, AuthException {
+        // Authorization
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+        if (token.getClaims().get("role").toString().equals(UserRole.SERVICE.toString())) {
+            if (!employeeService.isEmployeeInService(uid, token.getUid())) {
+                throw new AuthException("You are not authorized to access this resource");
+            }
+        } else if (token.getClaims().get("role").toString().equals(UserRole.EMPLOYEE.toString())) {
+            if (!token.getUid().equals(uid)) {
+                throw new AuthException("You are not authorized to access this resource");
+            }
+        }
+
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCountByHolder(null, null, uid, statuses, authorUid, categories, from, to));
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Gets likes count.
+     *
+     * @param id the id
+     * @return the likes count
+     */
+    @GetMapping(value = "/{id}/likes/count", produces = "application/json")
+    @FirebaseAuthorization(statuses = {"ACTIVE"})
+    public ResponseEntity<IssueLikesResponseDto> getLikesCount(@PathVariable Long id) {
+        IssueLikesResponseDto response = new IssueLikesResponseDto();
+        response.setCount(issueService.getLikesCount(id));
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Gets like status.
+     *
+     * @param id      the id
+     * @param request the request
+     * @return the like status
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @GetMapping(path = "/{id}/like/status", produces = "application/json")
+    @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
+    public ResponseEntity<IssueLikeStatusResponseDto> getLikeStatus(@PathVariable("id") Long id,
+                                                                    HttpServletRequest request) {
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+        Boolean likeStatus = issueService.getLikeStatus(id, token.getUid());
+        IssueLikeStatusResponseDto response = new IssueLikeStatusResponseDto();
+        response.setLikeStatus(likeStatus);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Like issue.
+     *
+     * @param id      the id
+     * @param request the request
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(path = "/{id}/like")
+    @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
+    public void likeIssue(@PathVariable("id") Long id,
+                          HttpServletRequest request) {
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+        issueService.likeIssue(id, token.getUid());
+    }
+
+    /**
+     * Delete like issue.
+     *
+     * @param issueId the issue id
+     * @param request the request
+     */
+    @ResponseStatus(HttpStatus.OK)
+    @DeleteMapping(path = "/{id}/like")
+    @FirebaseAuthorization(roles = {"RESIDENT"}, statuses = {"ACTIVE"})
+    public void deleteLikeIssue(@PathVariable("id") Long issueId,
+                                HttpServletRequest request) {
+        FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
+        issueService.deleteLikeIssue(issueId, token.getUid());
     }
 }
