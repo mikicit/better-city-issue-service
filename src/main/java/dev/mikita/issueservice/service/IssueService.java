@@ -1,6 +1,7 @@
 package dev.mikita.issueservice.service;
 
 import dev.mikita.issueservice.dto.ChangeIssueStatusNotificationDto;
+import dev.mikita.issueservice.dto.request.GetIssuesInSquareRequestDto;
 import dev.mikita.issueservice.entity.*;
 import dev.mikita.issueservice.exception.NotFoundException;
 import dev.mikita.issueservice.repository.*;
@@ -93,17 +94,24 @@ public class IssueService {
                 statuses, categories, coordinatesString, distance, fromDateTime, toDateTime, includeCategories, includeStatuses);
     }
 
-    public List<Issue> getIssuesInSquare(
-            List<IssueStatus> statuses, List<Long> categories, LocalDate from, LocalDate to,
-            Double minLongitude, Double minLatitude, Double maxLongitude, Double maxLatitude) {
-        LocalDateTime fromDateTime = from == null ? null : from.atStartOfDay();
-        LocalDateTime toDateTime = to == null ? null : to.atStartOfDay();
+    public List<Issue> getIssuesInSquare(GetIssuesInSquareRequestDto requestDto) {
+        LocalDateTime fromDateTime = requestDto.getFrom() == null ? null : requestDto.getFrom().atStartOfDay();
+        LocalDateTime toDateTime = requestDto.getTo() == null ? null : requestDto.getTo().atStartOfDay();
 
-        int includeStatuses = statuses == null ? 0 : 1;
-        int includeCategories = categories == null ? 0 : 1;
+        int includeStatuses = requestDto.getStatuses() == null ? 0 : 1;
+        int includeCategories = requestDto.getCategories() == null ? 0 : 1;
 
         return issueRepository.findAllBySquare(
-                statuses, categories, minLongitude, minLatitude, maxLongitude, maxLatitude, fromDateTime, toDateTime, includeCategories, includeStatuses);
+                requestDto.getStatuses(),
+                requestDto.getCategories(),
+                requestDto.getMinLongitude(),
+                requestDto.getMinLatitude(),
+                requestDto.getMaxLongitude(),
+                requestDto.getMaxLatitude(),
+                fromDateTime,
+                toDateTime,
+                includeCategories,
+                includeStatuses);
     }
 
     public Page<Issue> getIssuesByHolder(

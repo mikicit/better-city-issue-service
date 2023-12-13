@@ -3,6 +3,7 @@ package dev.mikita.issueservice.controller;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import dev.mikita.issueservice.annotation.FirebaseAuthorization;
+import dev.mikita.issueservice.dto.request.GetIssuesInSquareRequestDto;
 import dev.mikita.issueservice.dto.response.common.*;
 import dev.mikita.issueservice.dto.response.common.IssueLikeStatusResponseDto;
 import dev.mikita.issueservice.dto.response.common.IssueLikesResponseDto;
@@ -16,6 +17,7 @@ import dev.mikita.issueservice.service.*;
 import dev.mikita.issueservice.entity.IssueStatus;
 import jakarta.security.auth.message.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.Getter;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -104,7 +106,7 @@ public class IssueController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by", required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) {
 
@@ -178,31 +180,21 @@ public class IssueController {
 
     @GetMapping(path = "/square", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
-    public ResponseEntity<List<?>> getIssuesInSquare(
-            @RequestParam(required = false) List<IssueStatus> statuses,
-            @RequestParam(required = false) List<Long> categories,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(name = "min_longitude") Double minLongitude,
-            @RequestParam(name = "min_latitude") Double minLatitude,
-            @RequestParam(name = "max_longitude") Double maxLongitude,
-            @RequestParam(name = "max_latitude") Double maxLatitude,
-            @RequestParam(name = "coordinates_only", required = false) Boolean coordinatesOnly) {
+    public ResponseEntity<List<?>> getIssuesInSquare(@Valid GetIssuesInSquareRequestDto requestDto) {
         List<IssueStatus> allowedStatuses = List.of(IssueStatus.PUBLISHED, IssueStatus.SOLVING, IssueStatus.SOLVED);
 
         // Merge statuses
-        if (statuses != null) {
-            statuses = statuses.stream().filter(allowedStatuses::contains).collect(Collectors.toList());
+        if (requestDto.getStatuses() != null) {
+            requestDto.setStatuses(requestDto.getStatuses()
+                    .stream()
+                    .filter(allowedStatuses::contains).collect(Collectors.toList()));
         } else {
-            statuses = allowedStatuses;
+            requestDto.setStatuses(allowedStatuses);
         }
 
-        List<Issue> issues = issueService.getIssuesInSquare(
-                statuses, categories, from, to, minLongitude, minLatitude, maxLongitude, maxLatitude);
+        List<Issue> issues = issueService.getIssuesInSquare(requestDto);
 
-        Type responseType = coordinatesOnly != null && coordinatesOnly
+        Type responseType = requestDto.getCoordinatesOnly() != null && requestDto.getCoordinatesOnly()
                 ? new ParameterizedTypeReference<List<CoordinatesResponseDto>>() {}.getType()
                 : new ParameterizedTypeReference<List<IssueShortResponseDto>>() {}.getType();
 
@@ -374,7 +366,7 @@ public class IssueController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by", required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             @PathVariable String uid) {
 
@@ -414,7 +406,7 @@ public class IssueController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by", required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             @PathVariable String uid,
             HttpServletRequest request)
@@ -467,7 +459,7 @@ public class IssueController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by", required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             @PathVariable String uid,
             HttpServletRequest request)

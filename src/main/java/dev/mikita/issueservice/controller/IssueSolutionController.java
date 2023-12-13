@@ -97,7 +97,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order) {
         // Pagination and sorting
         if (orderBy == null) orderBy = OrderBy.CREATION_DATE;
@@ -134,7 +134,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) throws AuthException {
         // Authorization
@@ -182,7 +182,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
         // Authorization
@@ -238,7 +238,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order-by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
 

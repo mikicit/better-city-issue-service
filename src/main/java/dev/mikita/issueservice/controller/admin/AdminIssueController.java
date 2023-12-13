@@ -68,7 +68,7 @@ public class AdminIssueController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order
     ) {
         // Default values
