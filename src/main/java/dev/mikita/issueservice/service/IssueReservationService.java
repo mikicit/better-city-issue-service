@@ -83,10 +83,7 @@ public class IssueReservationService {
         issueReservationRepository.save(issueReservation);
 
         // Send notification
-        ChangeIssueStatusNotificationDto notificationDto = new ChangeIssueStatusNotificationDto();
-        notificationDto.setIssueId(issueId);
-        notificationDto.setUserId(issue.getAuthorUid());
-        notificationDto.setStatus(IssueStatus.SOLVING);
+        ChangeIssueStatusNotificationDto notificationDto = new ChangeIssueStatusNotificationDto(issueId, issue.getAuthorUid(), IssueStatus.SOLVING);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, notificationDto);
     }
 

@@ -292,8 +292,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        CountResponseDto response = new CountResponseDto();
-        response.setCount(issueSolutionService.getIssuesSolutionsCount(null, null, null, from, to, categories));
+        CountResponseDto response = new CountResponseDto(issueSolutionService.getIssuesSolutionsCount(null, null, null, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -306,8 +305,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        CountResponseDto response = new CountResponseDto();
-        response.setCount(issueSolutionService.getIssuesSolutionsCount(uid, null, null, from, to, categories));
+        CountResponseDto response = new CountResponseDto(issueSolutionService.getIssuesSolutionsCount(uid, null, null, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -333,8 +331,7 @@ public class IssueSolutionController {
             }
         }
 
-        CountResponseDto response = new CountResponseDto();
-        response.setCount(issueSolutionService.getIssuesSolutionsCount(null, null, uid, from, to, categories));
+        CountResponseDto response = new CountResponseDto(issueSolutionService.getIssuesSolutionsCount(null, null, uid, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -360,8 +357,7 @@ public class IssueSolutionController {
             }
         }
 
-        CountResponseDto response = new CountResponseDto();
-        response.setCount(issueSolutionService.getIssuesSolutionsCount(null, uid, null, from, to, categories));
+        CountResponseDto response = new CountResponseDto(issueSolutionService.getIssuesSolutionsCount(null, uid, null, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -373,8 +369,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        AvgTimeResponseDto response = new AvgTimeResponseDto();
-        response.setAvgTime(issueSolutionService.getAverageSolutionsTime(
+        AvgTimeResponseDto response = new AvgTimeResponseDto(issueSolutionService.getAverageSolutionsTime(
                 null, null, null, categories, from, to));
         return ResponseEntity.ok(response);
     }
@@ -388,8 +383,7 @@ public class IssueSolutionController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        AvgTimeResponseDto response = new AvgTimeResponseDto();
-        response.setAvgTime(issueSolutionService.getAverageSolutionsTime(
+        AvgTimeResponseDto response = new AvgTimeResponseDto(issueSolutionService.getAverageSolutionsTime(
                 uid, null, null, categories, from, to));
         return ResponseEntity.ok(response);
     }
@@ -416,8 +410,7 @@ public class IssueSolutionController {
             }
         }
 
-        AvgTimeResponseDto response = new AvgTimeResponseDto();
-        response.setAvgTime(issueSolutionService.getAverageSolutionsTime(
+        AvgTimeResponseDto response = new AvgTimeResponseDto(issueSolutionService.getAverageSolutionsTime(
                 null, null, uid, categories, from, to));
         return ResponseEntity.ok(response);
     }
@@ -444,8 +437,7 @@ public class IssueSolutionController {
             }
         }
 
-        AvgTimeResponseDto response = new AvgTimeResponseDto();
-        response.setAvgTime(issueSolutionService.getAverageSolutionsTime(
+        AvgTimeResponseDto response = new AvgTimeResponseDto(issueSolutionService.getAverageSolutionsTime(
                 null, uid, null, categories, from, to));
         return ResponseEntity.ok(response);
     }
