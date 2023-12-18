@@ -1,8 +1,8 @@
 package dev.mikita.issueservice.dto;
 
-import com.google.firebase.database.annotations.NotNull;
 import dev.mikita.issueservice.entity.IssueStatus;
 import lombok.Data;
+import lombok.NonNull;
 
 import java.beans.ConstructorProperties;
 
@@ -20,9 +20,9 @@ public class ChangeIssueStatusNotificationDto {
      */
     @ConstructorProperties({"issueId", "userId", "status"})
     public ChangeIssueStatusNotificationDto(
-            @NotNull Long issueId,
-            @NotNull String userId,
-            @NotNull IssueStatus status) {
+            @NonNull Long issueId,
+            @NonNull String userId,
+            @NonNull IssueStatus status) {
         this.issueId = issueId;
         this.userId = userId;
         this.status = status;

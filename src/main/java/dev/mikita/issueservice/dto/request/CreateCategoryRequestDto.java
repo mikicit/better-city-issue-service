@@ -1,7 +1,7 @@
 package dev.mikita.issueservice.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import lombok.NonNull;
 
 import java.beans.ConstructorProperties;
 
@@ -16,7 +16,7 @@ public class CreateCategoryRequestDto {
     private String name;
 
     @ConstructorProperties({"name"})
-    public CreateCategoryRequestDto(@NotBlank(message = "Category cannot be empty.") String name) {
+    public CreateCategoryRequestDto(@NonNull String name) {
         this.name = name;
     }
 }
