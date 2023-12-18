@@ -111,10 +111,7 @@ public class IssueSolutionService {
         issueSolutionRepository.save(issueSolution);
 
         // Send notification
-        ChangeIssueStatusNotificationDto notificationDto = new ChangeIssueStatusNotificationDto();
-        notificationDto.setIssueId(issueId);
-        notificationDto.setUserId(issue.getAuthorUid());
-        notificationDto.setStatus(IssueStatus.SOLVED);
+        ChangeIssueStatusNotificationDto notificationDto = new ChangeIssueStatusNotificationDto(issueId, issue.getAuthorUid(), IssueStatus.SOLVED);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, notificationDto);
     }
 
