@@ -151,7 +151,10 @@ public class IssueService {
         issueRepository.save(issue);
 
         // Send notification
-        ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto(issueId, issue.getAuthorUid(), IssueStatus.PUBLISHED);
+        ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
+        statusChangeNotification.setIssueId(issueId);
+        statusChangeNotification.setUserId(issue.getAuthorUid());
+        statusChangeNotification.setStatus(IssueStatus.PUBLISHED);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
     }
 
@@ -173,7 +176,10 @@ public class IssueService {
         moderationResponseRepository.save(moderationResponse);
 
         // Send notification
-        ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto(issueId, issue.getAuthorUid(), IssueStatus.DELETED);
+        ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
+        statusChangeNotification.setIssueId(issueId);
+        statusChangeNotification.setUserId(issue.getAuthorUid());
+        statusChangeNotification.setStatus(IssueStatus.PUBLISHED);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
     }
 
