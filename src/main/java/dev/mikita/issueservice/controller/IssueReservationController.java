@@ -291,7 +291,8 @@ public class IssueReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        CountResponseDto response = new CountResponseDto(issueReservationService.getIssuesReservationsCount(null, null, null, from, to, categories));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueReservationService.getIssuesReservationsCount(null, null, null, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -304,7 +305,8 @@ public class IssueReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        CountResponseDto response = new CountResponseDto(issueReservationService.getIssuesReservationsCount(uid, null, null, from, to, categories));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueReservationService.getIssuesReservationsCount(uid, null, null, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -330,7 +332,8 @@ public class IssueReservationController {
             }
         }
 
-        CountResponseDto response = new CountResponseDto(issueReservationService.getIssuesReservationsCount(null, null, uid, from, to, categories));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueReservationService.getIssuesReservationsCount(null, null, uid, from, to, categories));
         return ResponseEntity.ok(response);
     }
 
@@ -356,7 +359,8 @@ public class IssueReservationController {
             }
         }
 
-        CountResponseDto response = new CountResponseDto(issueReservationService.getIssuesReservationsCount(null, uid, null, from, to, categories));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueReservationService.getIssuesReservationsCount(null, uid, null, from, to, categories));
         return ResponseEntity.ok(response);
     }
 }

@@ -215,7 +215,7 @@ public class IssueController {
         Issue issue = issueService.findIssueById(id);
 
         if ((issue.getStatus() == IssueStatus.DELETED || issue.getStatus() == IssueStatus.MODERATION)
-            && !token.getUid().equals(issue.getAuthorUid())) {
+                && !token.getUid().equals(issue.getAuthorUid())) {
             throw new AuthException("Unauthorized");
         }
 
@@ -518,7 +518,8 @@ public class IssueController {
             statuses = allowedStatuses;
         }
 
-        CountResponseDto response = new CountResponseDto(issueService.getIssuesCount(statuses, authorUid, categories, from, to));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCount(statuses, authorUid, categories, from, to));
 
         return ResponseEntity.ok(response);
     }
@@ -534,7 +535,8 @@ public class IssueController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @PathVariable String uid) {
-        CountResponseDto response = new CountResponseDto(issueService.getIssuesCountByHolder(uid, null, null, statuses, authorUid, categories, from, to));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCountByHolder(uid, null, null, statuses, authorUid, categories, from, to));
 
         return ResponseEntity.ok(response);
     }
@@ -564,7 +566,8 @@ public class IssueController {
             }
         }
 
-        CountResponseDto response = new CountResponseDto(issueService.getIssuesCountByHolder(null, uid, null, statuses, authorUid, categories, from, to));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCountByHolder(null, uid, null, statuses, authorUid, categories, from, to));
 
         return ResponseEntity.ok(response);
     }
@@ -594,7 +597,8 @@ public class IssueController {
             }
         }
 
-        CountResponseDto response = new CountResponseDto(issueService.getIssuesCountByHolder(null, null, uid, statuses, authorUid, categories, from, to));
+        CountResponseDto response = new CountResponseDto();
+        response.setCount(issueService.getIssuesCountByHolder(null, null, uid, statuses, authorUid, categories, from, to));
 
         return ResponseEntity.ok(response);
     }
@@ -608,7 +612,8 @@ public class IssueController {
     @GetMapping(value = "/{id}/likes/count", produces = "application/json")
     @FirebaseAuthorization(statuses = {"ACTIVE"})
     public ResponseEntity<IssueLikesResponseDto> getLikesCount(@PathVariable Long id) {
-        IssueLikesResponseDto response = new IssueLikesResponseDto(issueService.getLikesCount(id));
+        IssueLikesResponseDto response = new IssueLikesResponseDto();
+        response.setCount(issueService.getLikesCount(id));
         return ResponseEntity.ok(response);
     }
 
@@ -626,7 +631,8 @@ public class IssueController {
                                                                     HttpServletRequest request) {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
         Boolean likeStatus = issueService.getLikeStatus(id, token.getUid());
-        IssueLikeStatusResponseDto response = new IssueLikeStatusResponseDto(likeStatus);
+        IssueLikeStatusResponseDto response = new IssueLikeStatusResponseDto();
+        response.setLikeStatus(likeStatus);
 
         return ResponseEntity.ok(response);
     }
