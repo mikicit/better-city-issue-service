@@ -70,7 +70,7 @@ public class IssueReservationController {
         FirebaseToken token = (FirebaseToken) request.getAttribute("firebaseToken");
         IssueReservation issueReservation = issueReservationService.getIssueReservation(id);
 
-        Class<?> responseClass = switch ((UserRole) token.getClaims().get("role")) {
+        Class<?> responseClass = switch (UserRole.valueOf((String) token.getClaims().get("role"))) {
             case SERVICE -> IssueReservationServiceResponseDto.class;
             case EMPLOYEE -> {
                 if (issueReservation.getEmployeeUid().equals(token.getUid())) {
@@ -95,7 +95,7 @@ public class IssueReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order) {
         // Pagination and sorting
         if (orderBy == null) orderBy = OrderBy.CREATION_DATE;
@@ -132,7 +132,7 @@ public class IssueReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) throws AuthException {
         // Authorization
@@ -180,7 +180,7 @@ public class IssueReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
 
@@ -237,7 +237,7 @@ public class IssueReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(name = "order_by",required = false) OrderBy orderBy,
+            @RequestParam(name = "order_by", required = false) OrderBy orderBy,
             @RequestParam(required = false) Order order,
             HttpServletRequest request) throws AuthException, ExecutionException, InterruptedException, FirebaseAuthException {
 
