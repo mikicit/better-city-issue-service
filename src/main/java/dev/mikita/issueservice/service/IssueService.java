@@ -155,7 +155,6 @@ public class IssueService {
         statusChangeNotification.setIssueId(issueId);
         statusChangeNotification.setUserId(issue.getAuthorUid());
         statusChangeNotification.setStatus(IssueStatus.PUBLISHED);
-
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
     }
 
@@ -180,8 +179,7 @@ public class IssueService {
         ChangeIssueStatusNotificationDto statusChangeNotification = new ChangeIssueStatusNotificationDto();
         statusChangeNotification.setIssueId(issueId);
         statusChangeNotification.setUserId(issue.getAuthorUid());
-        statusChangeNotification.setStatus(IssueStatus.DELETED);
-
+        statusChangeNotification.setStatus(IssueStatus.PUBLISHED);
         kafkaTemplate.send(STATUS_CHANGE_TOPIC, statusChangeNotification);
     }
 

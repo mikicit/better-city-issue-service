@@ -215,7 +215,7 @@ public class IssueController {
         Issue issue = issueService.findIssueById(id);
 
         if ((issue.getStatus() == IssueStatus.DELETED || issue.getStatus() == IssueStatus.MODERATION)
-            && !token.getUid().equals(issue.getAuthorUid())) {
+                && !token.getUid().equals(issue.getAuthorUid())) {
             throw new AuthException("Unauthorized");
         }
 
